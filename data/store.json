@@ -1,0 +1,142 @@
+{
+  "user_123": {
+    "user_id": "user_123",
+    "name": "测试用户",
+    "rooms": [
+      {
+        "name": "卧室",
+        "devices": [
+          {
+            "id": "xx1",
+            "type": "light",
+            "state": "on",
+            "meta": {
+              "brightness": 50
+            }
+          },
+          {
+            "id": "xx2",
+            "type": "ac",
+            "state": "on",
+            "meta": {
+              "temperature": 25
+            }
+          },
+          {
+            "id": "xx3",
+            "type": "music",
+            "state": "playing",
+            "meta": {
+              "song": "メルト"
+            }
+          }
+        ],
+        "meta": {}
+      },
+      {
+        "name": "客厅",
+        "devices": [
+          {
+            "id": "xx1",
+            "type": "light",
+            "state": "on",
+            "meta": {
+              "brightness": 100
+            }
+          },
+          {
+            "id": "xx2",
+            "type": "ac",
+            "state": "on",
+            "meta": {
+              "temperature": 25
+            }
+          }
+        ],
+        "meta": {}
+      }
+    ],
+    "preferences": {
+      "music_preference": "轻音乐",
+      "favorite_songs": [
+        "メルト"
+      ]
+    }
+  },
+  "user_456": {
+    "user_id": "user_456",
+    "name": "李华",
+    "rooms": [
+      {
+        "name": "书房",
+        "devices": [
+          {
+            "id": "dev1",
+            "type": "light",
+            "state": "off",
+            "meta": {
+              "brightness": 0
+            }
+          },
+          {
+            "id": "dev2",
+            "type": "ac",
+            "state": "off",
+            "meta": {
+              "temperature": 26
+            }
+          },
+          {
+            "id": "dev3",
+            "type": "music",
+            "state": "stopped",
+            "meta": {
+              "song": ""
+            }
+          }
+        ],
+        "meta": {}
+      },
+      {
+        "name": "客厅",
+        "devices": [
+          {
+            "id": "dev4",
+            "type": "light",
+            "state": "on",
+            "meta": {
+              "brightness": 80
+            }
+          },
+          {
+            "id": "dev5",
+            "type": "ac",
+            "state": "on",
+            "meta": {
+              "temperature": 23
+            }
+          },
+          {
+            "id": "dev6",
+            "type": "music",
+            "state": "playing",
+            "meta": {
+              "song": "周杰伦 - 七里香"
+            }
+          }
+        ],
+        "meta": {}
+      }
+    ],
+    "preferences": {
+      "music_preference": "华语流行",
+      "favorite_songs": [
+        "七里香",
+        "稻香",
+        "夜曲"
+      ],
+      "default_ac_temperature": 24,
+      "default_light_brightness": 70
+    }
+  }
+}

@@ -2,14 +2,16 @@ import asyncio
 from dotenv import load_dotenv
 import os
 
-from langchain_core.prompts import ChatPromptTemplate
 from langgraph.prebuilt import create_react_agent
 from langchain.chat_models import init_chat_model
+from langgraph.checkpoint.memory import InMemorySaver
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 # 初始化模型
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
+
+memory = InMemorySaver()
 
 # 创建模型
 model = init_chat_model(
@@ -19,8 +21,8 @@ model = init_chat_model(
     api_key=api_key,
 )
 
-# 加载 MCP 工具
 async def load_mcp_tools():
+    """加载 MCP 工具"""
     client = MultiServerMCPClient(
         {
             "wisehome": {
@@ -41,22 +43,28 @@ async def main():
         agent = create_react_agent(
             model=model,
             tools=tools,
+            checkpointer=memory,
         )
 
         while True:
-            user_input = input("\n你：").strip()
+            user_input = input("\n你: ").strip()
             if user_input.lower() in {"exit", "quit"}:
                 print("再见！")
                 break
 
             response = await agent.ainvoke(
-                {"messages": [{"role": "user", "content": user_input}]}
+                {
+                    "messages": [{"role": "user", "content": user_input}],
+                },
+                config={"configurable": {"thread_id": "2"}}
             )
 
-            print("\nAI：")
             for msg in response["messages"]:
-                if hasattr(msg, "content") and msg.content and hasattr(msg, "typet") and msg.type == "ai":
-                    print(msg.content)
+                if hasattr(msg, "content") and msg.content:
+                    print(f"reasoning: {msg.type}: {msg.content}")
+            ai_response = response["messages"][-1].text()
+            print(f"AI: {ai_response}")
+
     except Exception as e:
         print(f"MCP 服务器连接失败：{e}")
 
