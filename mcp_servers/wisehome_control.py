@@ -1,9 +1,8 @@
 import atexit
 from datetime import datetime
 from fastmcp import FastMCP
-from fastmcp import Context
 
-from memory_store import get_room, get_user, get_device,store
+from db.users import get_room, get_user, get_device, update_device_state,update_preference
 
 mcp = FastMCP("WiseHomeControl")
 
@@ -11,17 +10,20 @@ mcp = FastMCP("WiseHomeControl")
 DEFAULT_USER_ID = "user_123"
 
 @mcp.tool()
-def turn_on_ac(ctx: Context, room: str, temperature: int = 25,) -> str:
+def turn_on_ac(room: str, temperature: int = 25,user_id: str = DEFAULT_USER_ID) -> str:
     """开启指定房间的空调"""
     try:
-        user_id = ctx.get_state("user_id")
         r = get_room(user_id, room)
         ac = get_device(r, "ac")
+
         if ac["state"] == "on":
             return f"{room}空调已开启，当前温度 {ac['meta'].get('temperature')}℃"
         ac_temp = ac["meta"].get("temperature", temperature)
         ac["state"] = "on"
         ac["meta"]["temperature"] = ac_temp
+
+        update_device_state(user_id, room, "ac", ac)
+
         return f"{room}空调已开启（温度 {ac_temp}℃）"
     except ValueError as e:
         return str(e)
@@ -32,9 +34,13 @@ def turn_off_ac(room: str, user_id: str = DEFAULT_USER_ID) -> str:
     try:
         r = get_room(user_id, room)
         ac = get_device(r, "ac")
+
         if ac["state"] == "off":
             return f"{room}空调已关闭"
         ac["state"] = "off"
+
+        update_device_state(user_id, room, "ac", ac)
+
         return f"{room}空调已关闭"
     except ValueError as e:
         return str(e)
@@ -50,6 +56,9 @@ def set_temperature(room: str, temperature: int, user_id: str = DEFAULT_USER_ID)
         if ac["state"] == "off":
             ac["state"] = "on"  # 未开空调，先开启
         ac["meta"]["temperature"] = temperature
+
+        update_device_state(user_id, room, "ac", ac)
+
         return f"{room}空调温度已设置为 {temperature}℃"
     except ValueError as e:
         return str(e)
@@ -64,6 +73,9 @@ def turn_on_light(room: str, brightness: int = 100, user_id: str = DEFAULT_USER_
             return f"{room}灯已开启，亮度为 {light['meta'].get('brightness')}"
         light["state"] = "on"
         light["meta"]["brightness"] = brightness
+
+        update_device_state(user_id, room, "light", light)
+
         return f"{room}灯已打开，亮度为 {light['meta'].get('brightness')}"
     except ValueError as e:
         return str(e)
@@ -77,6 +89,9 @@ def turn_off_light(room: str, user_id: str = DEFAULT_USER_ID) -> str:
         if light["state"] == "off":
             return f"{room}灯已关闭"
         light["state"] = "off"
+
+        update_device_state(user_id, room, "light", light)
+
         return f"{room}灯已关闭"
     except ValueError as e:
         return str(e)
@@ -95,6 +110,9 @@ def set_brightness(room: str, brightness: int, user_id: str = DEFAULT_USER_ID) -
         if brightness == 0:
             light["state"] = "off"
             return f"{room}灯亮度设置为 0，灯已关闭"
+
+        update_device_state(user_id, room, "light", light)
+
         return f"{room}灯亮度已设置为 {brightness} "
     except ValueError as e:
         return str(e)
@@ -107,6 +125,9 @@ def play_music(room: str, song: str, user_id: str = DEFAULT_USER_ID) -> str:
         music = get_device(r, "music")
         music["state"] = "playing"
         music["meta"]["song"] = song
+
+        update_device_state(user_id, room, "music", music)
+
         return f"{room}的音箱正在播放《{song}》"
     except ValueError:
         return f"{room}没有音乐设备"
@@ -115,9 +136,13 @@ def play_music(room: str, song: str, user_id: str = DEFAULT_USER_ID) -> str:
 def stop_music(room: str, user_id: str = DEFAULT_USER_ID) -> str:
     """停止播放音乐"""
     try:
+        user = get_user(user_id)
         r = get_room(user_id, room)
         music = get_device(r, "music")
         music["state"] = "stopped"
+
+        update_device_state(user_id, room, "music", music)
+
         return f"{room} 音乐已停止"
     except ValueError:
         return f"{room} 没有音乐设备"
@@ -159,6 +184,9 @@ def store_user_preferences(preferences: dict, user_id: str = DEFAULT_USER_ID) ->
     try:
         user = get_user(user_id)
         user.setdefault("preferences", {}).update(preferences)
+
+        update_preference(user)
+
         return f"已更新偏好：{preferences}"
     except ValueError as e:
         return str(e)
@@ -173,9 +201,6 @@ def get_time() -> str:
 def get_weather(city: str = "上海") -> str:
     """获取天气"""
     return f"{city} 当前晴，气温 26℃，湿度 60%"
-
-
-atexit.register(store.save)
 
 if __name__ == "__main__":
     mcp.run(transport="sse", port=8001)
