@@ -23,13 +23,6 @@ model = init_chat_model(
     api_key=api_key,
 )
 
-# model = init_chat_model(
-#     "qwen3-0.6b",
-#     model_provider="openai",
-#     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-#     api_key=api_key_2,
-# )
-
 prompt = hub.pull("hwchase17/structured-chat-agent")
 
 async def load_mcp_tools():
