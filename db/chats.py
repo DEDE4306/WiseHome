@@ -9,6 +9,7 @@ def get_session_history(session_id: str) -> MongoDBChatMessageHistory:
         connection_string=URI,
         session_id=session_id,
         database_name=DB_NAME,
-        collection_name="chat_logs"
+        collection_name="chat_logs",
+        history_size=5
     )
 

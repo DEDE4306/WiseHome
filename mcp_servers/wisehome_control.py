@@ -134,9 +134,8 @@ def play_music(room: str, song: str, user_id: str = DEFAULT_USER_ID) -> str:
 
 @mcp.tool()
 def stop_music(room: str, user_id: str = DEFAULT_USER_ID) -> str:
-    """停止播放音乐"""
+    """停止播放音乐，传入房间名称，停止该房间的音乐"""
     try:
-        user = get_user(user_id)
         r = get_room(user_id, room)
         music = get_device(r, "music")
         music["state"] = "stopped"

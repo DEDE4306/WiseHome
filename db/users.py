@@ -64,10 +64,6 @@ class UserStore:
             upsert=True
         )
 
-
-
-
-
 # 创建全局 store 实例
 store = UserStore()
 

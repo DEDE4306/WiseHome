@@ -1,29 +1,40 @@
 import asyncio
 from dotenv import load_dotenv
 import os
+import logging
 
-from langchain import hub
-from langchain.agents import AgentExecutor,create_structured_chat_agent
 from langchain.chat_models import init_chat_model
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import HumanMessage
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableWithMessageHistory
 from langchain_mcp_adapters.client import MultiServerMCPClient
+from langgraph.prebuilt import create_react_agent
+
 from db.chats import get_session_history
+
 
 # 初始化模型
 load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
-api_key_2 = os.getenv("BAILIAN_API_KEY")
+api_key = os.getenv("BAILIAN_API_KEY")
 
-# # 创建模型
+# 屏蔽没用的错误输出
+logging.getLogger("langchain").setLevel(logging.ERROR)
+logging.getLogger("langchain_core").setLevel(logging.ERROR)
+
+# 创建模型
 model = init_chat_model(
-    "deepseek-ai/DeepSeek-R1",
+    "qwen3-0.6b",
     model_provider="openai",
-    base_url="https://api.siliconflow.cn/v1",
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
     api_key=api_key,
+    model_kwargs={"extra_body": {"enable_thinking": False}}
 )
 
-prompt = hub.pull("hwchase17/structured-chat-agent")
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are an intelligent home assistant."),
+    MessagesPlaceholder(variable_name="chat_history", optional=True),
+    MessagesPlaceholder(variable_name="messages"),
+])
 
 async def load_mcp_tools():
     """加载 MCP 工具"""
@@ -44,28 +55,18 @@ async def main():
         tools = await load_mcp_tools()
         print("MCP 智能家居系统已连接！可以开始对话，比如：'打开客厅灯'、'播放音乐'。")
 
-        agent = create_structured_chat_agent(
+        agent = create_react_agent(
             model,
             tools=tools,
-            prompt=prompt
-        )
-
-        agent_executor = AgentExecutor.from_agent_and_tools(
-            agent=agent,
-            tools=tools,
-            verbose=True,
-            handle_parsing_errors=True,
+            prompt=prompt,
         )
 
         agent_with_memory = RunnableWithMessageHistory(
-            agent_executor,
+            agent,
             get_session_history,
-            input_messages_key="input",
+            input_messages_key="messages",
             history_messages_key="chat_history",
         )
-
-        session_id = "user_1"
-
 
         while True:
             user_input = input("\n你: ").strip()
@@ -74,11 +75,16 @@ async def main():
                 break
 
             response = await agent_with_memory.ainvoke(
-                {"input": user_input},
-                config={"configurable": {"thread_id": "2","session_id": session_id}}
+                {
+                    "messages": [HumanMessage(content=user_input)],
+                },
+                config={"configurable": {"thread_id": "2", "session_id": "user_1"}}
             )
 
-            ai_response = response["output"]
+            for msg in response["messages"]:
+                if hasattr(msg, "content") and msg.content:
+                    print(f"reasoning: {msg.type}: {msg.content}")
+            ai_response = response["messages"][-1].text()
             print(f"AI: {ai_response}")
 
     except Exception as e:
