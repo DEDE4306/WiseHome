@@ -27,11 +27,12 @@ model = init_chat_model(
     model_provider="openai",
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
     api_key=api_key,
+    temperature=1,
     model_kwargs={"extra_body": {"enable_thinking": False}}
 )
 
 prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are an intelligent home assistant."),
+    ("system", "你是一个智能家居助手，请调用一个或多个工具完成用户需要的操作."),
     MessagesPlaceholder(variable_name="chat_history", optional=True),
     MessagesPlaceholder(variable_name="messages"),
 ])

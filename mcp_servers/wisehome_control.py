@@ -119,7 +119,7 @@ def set_brightness(room: str, brightness: int, user_id: str = DEFAULT_USER_ID) -
 
 @mcp.tool()
 def play_music(room: str, song: str, user_id: str = DEFAULT_USER_ID) -> str:
-    """播放音乐"""
+    """播放音乐，输入不带任何类似于引号或书名号的音乐名称"""
     try:
         r = get_room(user_id, room)
         music = get_device(r, "music")
