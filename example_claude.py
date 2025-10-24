@@ -26,7 +26,7 @@ load_dotenv()
 api_key = os.getenv("BAILIAN_API_KEY")
 
 model = init_chat_model(
-    "qwen3-1.7b",
+    "qwen3-0.6b",
     model_provider="openai",
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
     api_key=api_key,
@@ -40,6 +40,10 @@ prompt = ChatPromptTemplate.from_messages([
     ("human", "{input} {agent_scratchpad}"),
 ])
 
+# 改进的路由模板
+
+
+
 class AgentState(TypedDict):
     """状态定义"""
     messages: Annotated[list, add_messages]
@@ -48,7 +52,9 @@ class AgentState(TypedDict):
     input: str  # 原始用户输入
     is_chat: bool  # 是否为普通对话
 
+
 _tools_cache = None
+
 
 async def load_mcp_tools():
     """加载 MCP 工具"""
@@ -82,7 +88,7 @@ def extract_json(text: str) -> dict:
         try:
             return json.loads(match.group(0))
         except Exception as e:
-            print(f"JSON 解析失败：{e}")
+            print(f"⚠️  JSON 解析失败：{e}")
 
     return {}
 
@@ -99,14 +105,14 @@ async def llm_route(user_input: str) -> dict:
 
     # 验证结果
     if not result:
-        print("路由解析失败，默认为普通对话")
+        print("⚠️  路由解析失败，默认为普通对话")
         return {"type": "chat", "response": "抱歉，我没理解你的意思。"}
 
     result_type = result.get("type", "chat")
 
     # 如果是任务但 sub_tasks 为空，降级为对话
     if result_type == "task" and not result.get("sub_tasks"):
-        print("任务拆分为空，降级为对话")
+        print("⚠️  任务拆分为空，降级为对话")
         return {"type": "chat", "response": "请告诉我你需要什么帮助？"}
 
     return result
@@ -119,12 +125,12 @@ async def agent_router(state: AgentState) -> AgentState:
 
     result_type = route_result.get("type", "chat")
 
-    print(f"意图识别：{result_type}")
+    print(f"📋 意图识别：{result_type}")
 
     if result_type == "chat":
         # 普通对话，直接返回
         response = route_result.get("response", "你好！")
-        print(f"对话回复：{response}")
+        print(f"💬 对话回复：{response}")
         return {
             **state,
             "is_chat": True,
@@ -135,7 +141,7 @@ async def agent_router(state: AgentState) -> AgentState:
     else:
         # 任务指令
         sub_tasks = route_result.get("sub_tasks", [])
-        print(f"任务拆分：{json.dumps(sub_tasks, ensure_ascii=False)}")
+        print(f"📋 任务拆分：{json.dumps(sub_tasks, ensure_ascii=False)}")
         return {
             **state,
             "is_chat": False,
@@ -162,7 +168,7 @@ def route_decision(state: AgentState) -> Literal["smart_home_control", "query_in
     current_task = sub_tasks[current_idx]
     category = current_task.get("category", "query_info")
 
-    print(f"路由到: {category} (任务 {current_idx + 1}/{len(sub_tasks)})")
+    print(f"🔀 路由到: {category} (任务 {current_idx + 1}/{len(sub_tasks)})")
 
     return category
 
@@ -190,7 +196,7 @@ async def execute_current_task(state: AgentState, category: str) -> AgentState:
     current_task = sub_tasks[current_idx]
     task_content = current_task["task"]
 
-    print(f"执行任务 {current_idx + 1}: {task_content} [{category}]")
+    print(f"⚙️  执行任务 {current_idx + 1}: {task_content} [{category}]")
 
     # 加载并筛选工具
     all_tools = await load_mcp_tools()
@@ -198,7 +204,7 @@ async def execute_current_task(state: AgentState, category: str) -> AgentState:
 
     # 显示工具名称（调试用）
     tool_names = [t.name for t in filtered_tools]
-    print(f"使用工具: {', '.join(tool_names)}")
+    print(f"🔧 使用工具: {', '.join(tool_names)}")
 
     # 创建 Agent
     agent = create_structured_chat_agent(model, tools=filtered_tools, prompt=prompt)
@@ -223,15 +229,15 @@ async def execute_current_task(state: AgentState, category: str) -> AgentState:
         )
         result = response.get("output", "执行完成")
 
-        print(f"任务完成: {result}")
+        print(f"✅ 任务完成: {result}")
 
         return {
             **state,
-            "messages": [*state["messages"], AIMessage(content=result)],
+            "messages": [*state["messages"], AIMessage(content=f"[任务{current_idx + 1}] {result}")],
             "current_idx": current_idx + 1
         }
     except Exception as e:
-        print(f"任务执行出错: {e}")
+        print(f"❌ 任务执行出错: {e}")
         return {
             **state,
             "messages": [*state["messages"], AIMessage(content=f"[任务{current_idx + 1}] 失败: {str(e)}")],
@@ -296,7 +302,8 @@ async def create_workflow():
 
 async def main():
     try:
-        print("MCP 智能家居系统已连接！示例：'打开客厅灯并查询天气' 或 '你好'")
+        print("🏠 MCP 智能家居系统已连接！")
+        print("💡 示例：'打开客厅灯并查询天气' 或 '你好'")
 
         workflow = await create_workflow()
 
@@ -304,7 +311,7 @@ async def main():
             user_input = input("\n你: ").strip()
 
             if user_input.lower() in {"exit", "quit", "退出"}:
-                print("再见！")
+                print("👋 再见！")
                 break
 
             if not user_input:
@@ -317,15 +324,15 @@ async def main():
 
             messages = response.get("messages", [])
             if messages:
-                print("\nAI:")
+                print("\n🤖 AI:")
                 for msg in messages:
                     if hasattr(msg, "content"):
-                        print(f"{msg.content}")
+                        print(f"  {msg.content}")
             else:
-                print("AI: (无回复)")
+                print("🤖 AI: (无回复)")
 
     except Exception as e:
-        print(f"发生错误：{e}")
+        print(f"❌ 发生错误：{e}")
         import traceback
         traceback.print_exc()
 
@@ -334,4 +341,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n已退出。")
+        print("\n👋 已退出。")

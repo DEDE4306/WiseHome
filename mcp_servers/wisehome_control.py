@@ -134,7 +134,7 @@ def play_music(room: str, song: str, user_id: str = DEFAULT_USER_ID) -> str:
 
 @mcp.tool()
 def stop_music(room: str, user_id: str = DEFAULT_USER_ID) -> str:
-    """停止播放音乐，传入房间名称，停止该房间的音乐"""
+    """停止播放音乐，传入房间名称，关闭该房间的音乐"""
     try:
         r = get_room(user_id, room)
         music = get_device(r, "music")
@@ -158,7 +158,7 @@ def get_user_rooms(user_id: str = DEFAULT_USER_ID) -> str:
 
 @mcp.tool()
 def get_room_devices(room: str, user_id: str = DEFAULT_USER_ID) -> str:
-    """查询房间设备"""
+    """查询房间中的设备信息"""
     try:
         r = get_room(user_id, room)
         devices = [f"{d['type']}({d['state']}, {d['meta']})" for d in r["devices"]]
