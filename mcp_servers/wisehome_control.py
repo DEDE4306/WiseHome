@@ -119,7 +119,7 @@ def set_brightness(room: str, brightness: int, user_id: str = DEFAULT_USER_ID) -
 
 @mcp.tool()
 def play_music(room: str, song: str, user_id: str = DEFAULT_USER_ID) -> str:
-    """播放音乐，输入不带任何类似于引号或书名号的音乐名称"""
+    """播放音乐，传入房间名称和歌曲名，在指定房间播放音乐"""
     try:
         r = get_room(user_id, room)
         music = get_device(r, "music")
@@ -177,9 +177,7 @@ def get_user_preferences(user_id: str = DEFAULT_USER_ID) -> str:
 
 @mcp.tool()
 def store_user_preferences(preferences: dict, user_id: str = DEFAULT_USER_ID) -> str:
-    """
-    获取或更新用户偏好。如果传入 preferences，则更新；
-    """
+    """更新用户偏好。传入 preferences 更新；"""
     try:
         user = get_user(user_id)
         user.setdefault("preferences", {}).update(preferences)

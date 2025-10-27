@@ -17,9 +17,23 @@ graph TD
     HomeTools --> End([返回结果])
     QueryTools --> End
     
-    style Start fill:#e1f5e1
-    style Router fill:#fff3cd
-    style HomeAgent fill:#cce5ff
-    style QueryAgent fill:#cce5ff
-    style End fill:#e1f5e1
+
+```
+
+```mermaid
+graph TD
+    A[用户输入] --> B(router: 意图识别)
+    B --> C{决策}
+    C -->|普通对话| D[end]
+    C -->|控制任务| E[smart_home_control]
+    C -->|查询任务| F[query_info]
+    C -->|混合任务| G[mixed]
+    C -->|需重路由| H[re_route]
+    E --> C
+    F --> C
+    G --> C
+    H --> C
+    C -->|完成| D
+
+
 ```
