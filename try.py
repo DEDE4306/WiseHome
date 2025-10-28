@@ -26,7 +26,7 @@ api_key = os.getenv("BAILIAN_API_KEY")
 
 # 初始化模型
 model = init_chat_model(
-    "qwen3-1.7b",
+    "qwen3-0.6b",
     model_provider="openai",
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
     api_key=api_key,
