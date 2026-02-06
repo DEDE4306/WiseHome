@@ -1,8 +1,9 @@
-from db.connection import MongoConnection
+from db.connection import MongoConnection, DB_NAME
 from models.user_model import UserInfo, RoomInfo, DeviceState
 
 class UserStore:
-    def __init__(self, db_name="wisehome_db"):
+    """用户存储类"""
+    def __init__(self, db_name=DB_NAME):
         self.db = MongoConnection.get_db(db_name=db_name)
         self.users = self.db["users"]
 
@@ -14,13 +15,14 @@ class UserStore:
         return user
 
     def save_user(self, user: UserInfo):
-        print("[DEBUG] 保存用户:", user["user_id"])
+        """保存用户信息"""
+        print(f"保存用户: {user['user_id']}")
         result = self.users.update_one(
             {"user_id": user["user_id"]},
             {"$set": user},
             upsert=True
         )
-        print("[DEBUG] Mongo 更新结果:", result.raw_result)
+        print(f"Mongo 更新结果: {result.raw_result}")
 
     def delete_user(self, user_id: str):
         """删除用户"""
@@ -55,44 +57,37 @@ class UserStore:
                 {"d.type": device_type}
             ]
         )
-        print(f"[DEBUG] Mongo 更新结果: {result.raw_result}")
+        print(f"Mongo 更新结果: {result.raw_result}")
 
     def update_preference(self, user: UserInfo):
-        self.users.update_one(
+        """更新用户偏好"""
+        result = self.users.update_one(
             {"user_id": user["user_id"]},
             {"$set": user},
             upsert=True
         )
+        print(f"Mongo 更新结果: {result.raw_result}")
 
 # 创建全局 store 实例
 store = UserStore()
 
 # 兼容旧接口（可直接使用）
 def get_user(user_id: str) -> UserInfo:
+    """获取用户信息"""
     return store.get_user(user_id)
 
 def get_room(user_id: str, room_name: str) -> RoomInfo:
+    """查找房间"""
     return store.get_room(user_id, room_name)
 
 def get_device(room: RoomInfo, device_type: str) -> DeviceState:
+    """查找设备"""
     return store.get_device(room, device_type)
 
 def update_device_state(user_id: str, room_name: str, device_type: str, new_state: dict):
+    """原子更新设备状态"""
     return store.update_device_state(user_id, room_name, device_type, new_state)
 
 def update_preference(user:UserInfo):
+    """更新用户偏好"""
     return store.update_preference(user)
-
-if __name__ == "__main__":
-    """开启指定房间的空调"""
-    try:
-        r = get_room("user_123", "卧室")
-        ac = get_device(r, "ac")
-
-        ac_temp = ac["meta"].get("temperature", 15)
-        ac["state"] = "on"
-        ac["meta"]["temperature"] = ac_temp
-
-        update_device_state("user_123", "卧室", "ac", ac)
-    except Exception as e:
-        print(str(e))

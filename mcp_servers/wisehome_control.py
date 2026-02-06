@@ -70,8 +70,7 @@ def set_temperature(room: str, temperature: int, user_id: str = DEFAULT_USER_ID)
 def add_temperature(room: str, temperature: int = 1, user_id: str = DEFAULT_USER_ID) -> str:
     """
     在当前温度基础上调高空调温度，输入 temperature 为需要增加的温度大小
-    适用场景：
-    - "将客厅空调温度调高 2 度" → 当前温度 +2，temperature 为 2
+    适用场景："将客厅空调温度调高 2 度" → 当前温度 +2，temperature 为 2
     如果不传递参数，默认调整 1 度
     """
     try:
@@ -93,8 +92,7 @@ def add_temperature(room: str, temperature: int = 1, user_id: str = DEFAULT_USER
 def minus_temperature(room: str, temperature: int = 1, user_id: str = DEFAULT_USER_ID) -> str:
     """
     在当前温度基础上调低空调温度，输入 temperature 为需要调低的温度大小
-    适用场景：
-    - "将客厅空调温度调低 2 度" → 当前温度 -2，tempeature 为 2
+    适用场景："将客厅空调温度调低 2 度" → 当前温度 -2，tempeature 为 2
     如果不传递参数，默认调整 1 度
     """
     try:
@@ -139,7 +137,7 @@ def turn_on_light(room: str, brightness: int = 100, user_id: str = DEFAULT_USER_
         r = get_room(user_id, room)
         light = get_device(r, "light")
         if light["state"] == "on":
-            return f"{room}灯已开启，当前亮度为 {light['meta'].get('brightness')}，请不要重复操作"
+            return f"{room}灯已开启，当前亮度为 {light['meta'].get('brightness')}，"
         light["state"] = "on"
         light["meta"]["brightness"] = brightness
 
