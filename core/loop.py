@@ -26,6 +26,7 @@ async def loop():
         )
 
         msgs = response.get("messages", [])
+        print(msgs)
 
         tool_output = None
         ai_output = None
@@ -33,7 +34,7 @@ async def loop():
         for msg in msgs:
             if isinstance(msg, ToolMessage):
                 # 工具调用的结果
-                tool_output = msg.content[0]['text'] if msg.content and len(msg.content) > 0 else "无工具输出"
+                tool_output = msg.content if msg.content else "无工具输出"
                 print("Tool: ", tool_output)    # 如果工具有输出，打印出来
             elif isinstance(msg, AIMessage):
                 # AI 的回复

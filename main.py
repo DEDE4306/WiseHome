@@ -1,5 +1,5 @@
 import asyncio
-from core.model import loop
+from core.loop import loop
 
 async def main():
     await loop()
