@@ -5,6 +5,20 @@ system_template = """
 """
 
 
+type_router_template = """
+你是一个智能家居任务分类器。请根据用户请求判断任务类型：\n
+- 如果是单一操作（如'开灯'），返回 'simple'\n
+- 如果是多个操作需协同完成（如'开灯并调暗'），返回 'complex'\n
+- 如果是多个独立任务（如'开灯并查天气'），返回 'mixed'\n
+请以 JSON 格式输出，只包含 task_type 字段。
+"""
+
+category_router_template = """
+分析任务的意图：
+请从 chat, query_info, smart_home_control 中选择最合适的类别。
+请以 JSON 格式输出，只包含 task_category 字段。
+"""
+
 router_template = """你是路由助手。分析用户意图，输出 JSON：
 
 重要规则：

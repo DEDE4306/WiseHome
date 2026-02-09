@@ -4,6 +4,9 @@ from pymongo import MongoClient
 URI = "mongodb://localhost:27017/"  # MongoDB 服务器地址
 DB_NAME = "wisehome_db"  # MongoDB 数据库名称
 
+# 集合名称
+CHAT_COLLECTION_NAME = "chat_logs"  # 聊天日志集合名称
+
 
 class MongoConnection:
     """单例 MongoDB 客户端"""
