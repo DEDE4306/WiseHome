@@ -10,7 +10,16 @@ DEFAULT_USER_ID = "user_123"
 
 @mcp.tool()
 def turn_on_ac(room: str, temperature: int = 25,user_id: str = DEFAULT_USER_ID) -> str:
-    """开启指定房间的空调"""
+    """开启指定房间的空调
+    
+    适用场景：用户要求"打开XX空调"、"开启XX空调"、"XX空调开"等
+    Args:
+        room: 房间名称，如"客厅"、"卧室"等
+        temperature: 可选，开启时设置的温度，默认为25度
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        操作结果字符串
+    """
     try:
         r = get_room(user_id, room)
         ac = get_device(r, "ac")
@@ -29,7 +38,15 @@ def turn_on_ac(room: str, temperature: int = 25,user_id: str = DEFAULT_USER_ID) 
 
 @mcp.tool()
 def turn_off_ac(room: str, user_id: str = DEFAULT_USER_ID) -> str:
-    """关闭指定房间的空调"""
+    """关闭指定房间的空调
+    
+    适用场景：用户要求"关闭XX空调"、"XX空调关"、"关掉XX空调"等
+    Args:
+        room: 房间名称，如"客厅"、"卧室"等
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        操作结果字符串
+    """
     try:
         r = get_room(user_id, room)
         ac = get_device(r, "ac")
@@ -45,11 +62,17 @@ def turn_off_ac(room: str, user_id: str = DEFAULT_USER_ID) -> str:
         return str(e)
 
 @mcp.tool()
-def set_temperature(room: str, temperature: int, user_id: str = DEFAULT_USER_ID) -> str:
-    """
-    支持设置房间空调温度到指定值（16-30）。
-    适用场景：设置温度到特定温度，如"将客厅空调温度设置为 25 度"。
-    如果用户说“调高/调低 XX 空调温度”，应使用 add_temperature 或 minus_temperature。
+def set_ac_temperature(room: str, temperature: int, user_id: str = DEFAULT_USER_ID) -> str:
+    """设置房间空调温度到指定值（16-30度）
+    
+    适用场景：用户要求"将XX空调温度设置为XX度"、"XX空调调到XX度"等
+    Args:
+        room: 房间名称，如"客厅"、"卧室"等
+        temperature: 目标温度，范围16-30度
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        操作结果字符串
+    注意：如果用户说"调高/调低XX空调温度"，应使用 add_temperature 或 minus_temperature
     """
     if not 16 <= temperature <= 30:
         return f"设置的温度 {temperature}℃ 超出温度范围 16~30℃"
@@ -67,11 +90,16 @@ def set_temperature(room: str, temperature: int, user_id: str = DEFAULT_USER_ID)
         return str(e)
 
 @mcp.tool()
-def add_temperature(room: str, temperature: int = 1, user_id: str = DEFAULT_USER_ID) -> str:
-    """
-    在当前温度基础上调高空调温度，输入 temperature 为需要增加的温度大小
-    适用场景："将客厅空调温度调高 2 度" → 当前温度 +2，temperature 为 2
-    如果不传递参数，默认调整 1 度
+def add_ac_temperature(room: str, temperature: int = 1, user_id: str = DEFAULT_USER_ID) -> str:
+    """在当前温度基础上调高空调温度
+    
+    适用场景：用户要求"将XX空调温度调高XX度"、"XX空调温度加XX"、"调高XX空调"等
+    Args:
+        room: 房间名称，如"客厅"、"卧室"等
+        temperature: 需要增加的温度数值，默认为1度
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        操作结果字符串
     """
     try:
         r = get_room(user_id, room)
@@ -89,11 +117,17 @@ def add_temperature(room: str, temperature: int = 1, user_id: str = DEFAULT_USER
         return str(e)
 
 @mcp.tool()
-def minus_temperature(room: str, temperature: int = 1, user_id: str = DEFAULT_USER_ID) -> str:
-    """
-    在当前温度基础上调低空调温度，输入 temperature 为需要调低的温度大小
-    适用场景："将客厅空调温度调低 2 度" → 当前温度 -2，tempeature 为 2
-    如果不传递参数，默认调整 1 度
+def minus_ac_temperature(room: str, temperature: int = 1, user_id: str = DEFAULT_USER_ID) -> str:
+    """在当前温度基础上调低空调温度
+    
+    适用场景：用户要求"将XX空调温度调低XX度"、"XX空调温度减XX"、"调低XX空调"等
+    Args:
+        room: 房间名称，如"客厅"、"卧室"等
+        temperature: 需要调低的温度数值，默认为1度
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        操作结果字符串
+    示例："将客厅空调温度调低2度" → temperature参数为2
     """
     try:
         r = get_room(user_id, room)
@@ -111,8 +145,16 @@ def minus_temperature(room: str, temperature: int = 1, user_id: str = DEFAULT_US
         return str(e)
 
 @mcp.tool()
-def get_temperature(room: str, user_id: str = DEFAULT_USER_ID) -> str:
-    """查询指定房间中空调的温度"""
+def get_ac_temperature(room: str, user_id: str = DEFAULT_USER_ID) -> str:
+    """查询指定房间中空调的温度
+    
+    适用场景：用户要求"查询XX空调温度"、"XX空调多少度"、"XX空调温度"等
+    Args:
+        room: 房间名称，如"客厅"、"卧室"等
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        当前空调温度信息
+    """
     try:
         r = get_room(user_id, room)
         ac = get_device(r, "ac")
@@ -128,10 +170,16 @@ def get_temperature(room: str, user_id: str = DEFAULT_USER_ID) -> str:
 
 @mcp.tool()
 def turn_on_light(room: str, brightness: int = 100, user_id: str = DEFAULT_USER_ID) -> str:
-    """
-    打开房间灯光并设置初始亮度。
-    仅用于开灯操作，请不要用这个函数来调节已开启的灯的亮度。
-    如需调节亮度，请使用 set_brightness、add_brightness 或 minus_brightness。
+    """打开房间灯光并设置初始亮度
+    
+    适用场景：用户要求"打开XX灯"、"开XX灯"、"XX灯开"等
+    Args:
+        room: 房间名称，如"客厅"、"卧室"等
+        brightness: 可选，开灯时的初始亮度，默认为100（最大亮度）
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        操作结果字符串
+    注意：仅用于开灯操作，不要用此函数调节已开启灯的亮度。如需调节亮度，请使用 set_brightness、add_brightness 或 minus_brightness
     """
     try:
         r = get_room(user_id, room)
@@ -149,10 +197,15 @@ def turn_on_light(room: str, brightness: int = 100, user_id: str = DEFAULT_USER_
 
 @mcp.tool()
 def turn_off_light(room: str, user_id: str = DEFAULT_USER_ID) -> str:
-    """、
-    关闭房间灯光
-    仅用于关灯操作，不用于调节灯光的亮度，如果要调暗灯光亮度请用 minus_brightness。
-    如需调节亮度，请使用 set_brightness、add_brightness 或 minus_brightness。
+    """关闭房间灯光
+    
+    适用场景：用户要求"关闭XX灯"、"关XX灯"、"XX灯关"、"关掉XX灯"等
+    Args:
+        room: 房间名称，如"客厅"、"卧室"等
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        操作结果字符串
+    注意：仅用于关灯操作，不用于调节灯光亮度。如需调暗灯光亮度，请使用 minus_brightness
     """
     try:
         r = get_room(user_id, room)
@@ -168,11 +221,17 @@ def turn_off_light(room: str, user_id: str = DEFAULT_USER_ID) -> str:
         return str(e)
 
 @mcp.tool()
-def set_brightness(room: str, brightness: int, user_id: str = DEFAULT_USER_ID) -> str:
-    """
-    设置房间灯光亮度到指定值（0-100）。
-    适用场景：设置灯光到特定亮度，如"将灯光设置为50"，"将灯光调整到 50"
-    如果用户说"调亮/调暗XX"，应使用 add_brightness 或 minus_brightness。
+def set_light_brightness(room: str, brightness: int, user_id: str = DEFAULT_USER_ID) -> str:
+    """设置房间灯光亮度到指定值（0-100）
+    
+    适用场景：用户要求"将XX灯亮度设置为XX"、"XX灯调到XX"、"XX灯亮度XX"等
+    Args:
+        room: 房间名称，如"客厅"、"卧室"等
+        brightness: 目标亮度值，范围0-100，0表示关闭
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        操作结果字符串
+    注意：如果用户说"调亮/调暗XX灯"，应使用 add_brightness 或 minus_brightness
     """
     try:
         r = get_room(user_id, room)
@@ -193,14 +252,17 @@ def set_brightness(room: str, brightness: int, user_id: str = DEFAULT_USER_ID) -
         return str(e)
 
 @mcp.tool()
-def add_brightness(room: str, brightness: int = 10, user_id: str = DEFAULT_USER_ID) -> str:
-    """
-    在当前亮度基础上调亮灯光。
-    适用场景：
-    - "将客厅灯调亮20" → 当前亮度+20
-    - "把灯调亮一点" → 当前亮度+10（默认值）
-    - "增加亮度30" → 当前亮度+30
-    如果灯是关闭的，会先开灯（亮度设为0），然后增加指定亮度。
+def add_light_brightness(room: str, brightness: int = 10, user_id: str = DEFAULT_USER_ID) -> str:
+    """在当前亮度基础上调亮灯光
+    
+    适用场景：用户要求"将XX灯调亮XX"、"XX灯亮度加XX"、"调亮XX灯"、"XX灯亮一点"等
+    Args:
+        room: 房间名称，如"客厅"、"卧室"等
+        brightness: 需要增加的亮度数值，默认为10
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        操作结果字符串
+    示例："将客厅灯调亮20" → brightness参数为20；"把灯调亮一点" → 使用默认值10
     """
     try:
         r = get_room(user_id, room)
@@ -221,14 +283,18 @@ def add_brightness(room: str, brightness: int = 10, user_id: str = DEFAULT_USER_
         return str(e)
 
 @mcp.tool()
-def minus_brightness(room: str, brightness: int = 10, user_id: str = DEFAULT_USER_ID) -> str:
-    """
-    在当前亮度基础上调暗灯光。
-    适用场景：
-    - "将客厅灯调暗20" → 当前亮度-20
-    - "把灯调暗一点" → 当前亮度-10（默认值）
-    - "降低亮度30" → 当前亮度-30
-    如果调暗后亮度为 0，会自动关闭灯光，不需要手动关闭。
+def minus_light_brightness(room: str, brightness: int = 10, user_id: str = DEFAULT_USER_ID) -> str:
+    """在当前亮度基础上调暗灯光
+    
+    适用场景：用户要求"将XX灯调暗XX"、"XX灯亮度减XX"、"调暗XX灯"、"XX灯暗一点"等
+    Args:
+        room: 房间名称，如"客厅"、"卧室"等
+        brightness: 需要调低的亮度数值，默认为10
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        操作结果字符串
+    示例："将客厅灯调暗20" → brightness参数为20；"把灯调暗一点" → 使用默认值10
+    注意：如果调暗后亮度为0，会自动关闭灯光
     """
     try:
         r = get_room(user_id, room)
@@ -253,8 +319,16 @@ def minus_brightness(room: str, brightness: int = 10, user_id: str = DEFAULT_USE
         return str(e)
 
 @mcp.tool()
-def get_brightness(room: str, user_id: str = DEFAULT_USER_ID) -> str:
-    """查询指定房间中灯的亮度"""
+def get_light_brightness(room: str, user_id: str = DEFAULT_USER_ID) -> str:
+    """查询指定房间中灯的亮度
+    
+    适用场景：用户要求"查询XX灯亮度"、"XX灯亮度多少"、"XX灯多亮"等
+    Args:
+        room: 房间名称，如"客厅"、"卧室"等
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        灯光亮度信息字符串
+    """
     try:
         r = get_room(user_id, room)
         light = get_device(r, "light")
@@ -270,7 +344,16 @@ def get_brightness(room: str, user_id: str = DEFAULT_USER_ID) -> str:
 
 @mcp.tool()
 def play_music(room: str, song: str, user_id: str = DEFAULT_USER_ID) -> str:
-    """播放音乐，传入房间名称和歌曲名，在指定房间播放音乐"""
+    """在指定房间播放音乐
+    
+    适用场景：用户要求"在XX播放XX"、"XX放歌"、"播放XX音乐"等
+    Args:
+        room: 房间名称，如"客厅"、"卧室"等
+        song: 歌曲名称
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        操作结果字符串
+    """
     try:
         r = get_room(user_id, room)
         music = get_device(r, "music")
@@ -285,7 +368,15 @@ def play_music(room: str, song: str, user_id: str = DEFAULT_USER_ID) -> str:
 
 @mcp.tool()
 def stop_music(room: str, user_id: str = DEFAULT_USER_ID) -> str:
-    """停止播放音乐，传入房间名称，关闭该房间的音乐"""
+    """停止指定房间的音乐播放
+    
+    适用场景：用户要求"停止XX音乐"、"XX音乐停"、"关掉XX音乐"等
+    Args:
+        room: 房间名称，如"客厅"、"卧室"等
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        操作结果字符串
+    """
     try:
         r = get_room(user_id, room)
         music = get_device(r, "music")
@@ -300,7 +391,14 @@ def stop_music(room: str, user_id: str = DEFAULT_USER_ID) -> str:
 
 @mcp.tool()
 def get_music_device(user_id: str = DEFAULT_USER_ID) -> str:
-    """获取用户拥有音乐设备的房间列表"""
+    """获取用户拥有音乐设备的房间列表
+    
+    适用场景：用户要求"哪些房间有音箱"、"哪里可以放歌"、"音乐设备在哪里"等
+    Args:
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        包含音乐设备的房间列表字符串
+    """
     try:
         user = get_user(user_id)
         rooms_with_music = []
@@ -331,7 +429,14 @@ def get_music_device(user_id: str = DEFAULT_USER_ID) -> str:
 
 @mcp.tool()
 def get_user_rooms(user_id: str = DEFAULT_USER_ID) -> str:
-    """获取用户的房间信息"""
+    """获取用户的房间信息
+    
+    适用场景：用户要求"有哪些房间"、"我的房间"、"房间列表"等
+    Args:
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        用户拥有的房间列表字符串
+    """
     try:
         user = get_user(user_id)
         rooms = [r["name"] for r in user["rooms"]]
@@ -341,7 +446,15 @@ def get_user_rooms(user_id: str = DEFAULT_USER_ID) -> str:
 
 @mcp.tool()
 def get_room_devices(room: str, user_id: str = DEFAULT_USER_ID) -> str:
-    """查询房间中的设备信息"""
+    """查询指定房间中的设备信息
+    
+    适用场景：用户要求"XX房间有什么设备"、"XX房间设备"、"查看XX设备"等
+    Args:
+        room: 房间名称，如"客厅"、"卧室"等
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        房间设备信息字符串
+    """
     try:
         r = get_room(user_id, room)
         devices = [f"{d['type']}({d['state']}, {d['meta']})" for d in r["devices"]]
@@ -351,7 +464,14 @@ def get_room_devices(room: str, user_id: str = DEFAULT_USER_ID) -> str:
 
 @mcp.tool()
 def get_user_preferences(user_id: str = DEFAULT_USER_ID) -> str:
-    """查询用户偏好，包括喜欢的音乐，喜欢的空调温度、灯的亮度等"""
+    """查询用户偏好设置
+    
+    适用场景：用户要求"我的偏好"、"用户设置"、"喜欢的音乐/温度/亮度"等
+    Args:
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        用户偏好信息字符串，包括喜欢的音乐、空调温度、灯的亮度等
+    """
     try:
         user = get_user(user_id)
         return f"用户偏好：{user['preferences']}"
@@ -360,7 +480,15 @@ def get_user_preferences(user_id: str = DEFAULT_USER_ID) -> str:
 
 @mcp.tool()
 def store_user_preferences(preferences: dict, user_id: str = DEFAULT_USER_ID) -> str:
-    """更新用户偏好。传入 preferences 更新；"""
+    """更新用户偏好设置
+    
+    适用场景：用户要求"设置我的偏好"、"更新偏好"、"保存偏好"等
+    Args:
+        preferences: 偏好设置字典，包含要更新的偏好项，如喜欢的音乐、空调温度、灯的亮度等
+        user_id: 用户ID，默认为当前用户
+    Returns:
+        操作结果字符串
+    """
     try:
         user = get_user(user_id)
         user.setdefault("preferences", {}).update(preferences)
@@ -373,13 +501,26 @@ def store_user_preferences(preferences: dict, user_id: str = DEFAULT_USER_ID) ->
 
 @mcp.tool()
 def get_time() -> str:
-    """获取当前系统时间"""
+    """获取当前系统时间
+    
+    适用场景：用户要求"现在几点"、"当前时间"、"几点了"等
+    Args:无
+    Returns:
+        当前时间字符串，格式为"YYYY-MM-DD HH:MM:SS"
+    """
     now = datetime.now()
     return f"当前时间：{now.strftime('%Y-%m-%d %H:%M:%S')}"
 
 @mcp.tool()
 def get_weather(city: str = "上海") -> str:
-    """获取天气"""
+    """获取指定城市的天气信息
+    
+    适用场景：用户要求"天气如何"、"XX天气"、"查询天气"等
+    Args:
+        city: 城市名称，默认为"上海"
+    Returns:
+        天气信息字符串
+    """
     return f"{city} 当前晴，气温 26℃，湿度 60%"
 
 if __name__ == "__main__":

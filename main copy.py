@@ -114,8 +114,18 @@ async def filter_tools_by_category(category: str) -> List[BaseTool]:
 
     all_tools = await load_mcp_tools()
     keyword_map = {
-        "smart_home_control": ["turn", "set", "open", "close", "switch", "调节", "开", "关", "设置", "播放", "play", "stop", "add", "minus"],
-        "query_info": ["get", "query", "status", "weather", "list", "查询", "获取", "状态", "信息", "rooms", "room"]
+         "smart_home_control": [
+            "turn_on_ac", "turn_off_ac", "set_ac_temperature",
+            "add_ac_temperature", "minus_ac_temperature",
+            "turn_on_light", "turn_off_light", "set_light_brightness",
+            "add_light_brightness", "minus_light_brightness",
+            "play_music", "stop_music",
+        ],
+        "query_info": [
+            "get_ac_temperature", "get_light_brightness", "get_music_device",
+            "get_user_rooms", "get_room_devices", "get_user_preferences",
+            "get_time", "get_weather"
+        ],
     }
 
     keywords = keyword_map.get(category, [])

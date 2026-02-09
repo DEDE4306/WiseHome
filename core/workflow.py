@@ -24,10 +24,10 @@ _agent_cache_lock = asyncio.Lock()
 class AgentState(TypedDict):
     """Agent 状态定义，用于在 workflow 节点间传递数据"""
     messages: Annotated[list[AnyMessage], add_messages]     # 会话消息列表
-    task_type: Literal["simple", "complex", "mixed"]        # 第一层任务类型
+    task_type: Literal["simple", "complex", "mixed"]        # 任务类型
     task_category: Literal["chat", "query_info", "smart_home_control"]    # 子任务类型
     sub_tasks: List[Dict[str, Any]]     # 处理后的子任务列表
-    current_task: Dict[str, Any]        # 当前正在执行的任务
+    current_task: str        # 当前正在执行的任务
 
 # ============== 路由模型定义 ==============
 class RouteTaskType(BaseModel):
@@ -40,6 +40,13 @@ class RouteCategory(BaseModel):
     """判断子任务类别"""
     task_category: Literal["chat", "query_info", "smart_home_control"] = Field(
         description="子任务类别：chat（聊天）、query_info（查询信息）、smart_home_control（控制设备）"
+    )
+
+class TaskSplitResult(BaseModel):
+    """混合任务拆分结果，严格匹配指定的输出格式"""
+    sub_tasks: List[Dict[str, str]] = Field(
+        None,
+        description="拆分后的简单任务列表，每个元素是仅包含'task'键的字典",
     )
 
 # ============== 加载工具 =============
@@ -72,6 +79,8 @@ type_router_llm = model.with_structured_output(RouteTaskType)
 
 category_router_llm = model.with_structured_output(RouteCategory)
 
+task_spliter_llm = model.with_structured_output(TaskSplitResult)
+
 # ============== 路由函数 ==============
 def type_router(state: AgentState) -> dict:
     """路由，意图识别，判断任务类型"""
@@ -82,19 +91,31 @@ def type_router(state: AgentState) -> dict:
         HumanMessage(content=message.content)
     ])
 
-    return {"task_type": result.task_type, "current_task": message}
+    return {"task_type": result.task_type, "current_task": message.content}
 
 def category_router(state: AgentState) -> dict:
     """路由，子任务类型识别"""
     message = state["messages"][-1]
-
 
     result = category_router_llm.invoke([
         SystemMessage(content=category_router_template),
         HumanMessage(content=f"任务：{message}")
     ])
 
-    return {"task_category": result.task_category, "current_task": message}
+    return {"task_category": result.task_category, "current_task": message.content}
+
+# ============= 处理函数 ==============
+def task_splitter(state: AgentState) -> dict:
+    message = state["messages"][-1]
+
+    result = task_spliter_llm.invoke([
+        SystemMessage(content=type_router_template),
+        HumanMessage(content=message.content)
+    ])
+
+    print("任务拆分原始输出: ", result)
+
+    return result
 
 # ============== 工具过滤 ==============
 async def filter_tools(category: str) -> List[BaseTool]:
@@ -107,30 +128,33 @@ async def filter_tools(category: str) -> List[BaseTool]:
         过滤后的工具列表
         
     规则:
-        - chat: 返回空列表（聊天不需要工具）
-        - query_info: 返回查询类工具（包含 get、query、status、weather、list 等关键词）
-        - smart_home_control: 返回控制类工具（包含 turn、set、open、close、switch、调节、开、关、设置、播放、play、stop、add、minus 等关键词）
+        - chat: 返回空列表
+        - query_info: 返回查询类工具
+        - smart_home_control: 返回控制类工具
     """
     global _tools_filter_cache
     
-    if category in _tools_filter_cache:
-        return _tools_filter_cache[category]
-    
     keyword_map = {
-        "smart_home_control": ["turn", "set", "open", "close", "switch", "调节", "开", "关", "设置", "播放", "play", "stop", "add", "minus"],
-        "query_info": ["get", "query", "status", "weather", "list", "查询", "获取", "状态", "信息", "rooms", "room"],
+        "smart_home_control": [
+            "turn_on_ac", "turn_off_ac", "set_ac_temperature",
+            "add_ac_temperature", "minus_ac_temperature",
+            "turn_on_light", "turn_off_light", "set_light_brightness",
+            "add_light_brightness", "minus_light_brightness",
+            "play_music", "stop_music",
+        ],
+        "query_info": [
+            "get_ac_temperature", "get_light_brightness", "get_music_device",
+            "get_user_rooms", "get_room_devices", "get_user_preferences",
+            "get_time", "get_weather"
+        ],
         "chat": []
     }
-    
-    keywords = keyword_map.get(category, [])
-    
-    if category == "chat":
-        _tools_filter_cache[category] = []
-        return []
-    
+
     all_tools = await load_mcp_tools()
-    filtered = [t for t in all_tools if any(kw in t.name.lower() or kw in t.description.lower() for kw in keywords)]
+    keywords = keyword_map.get(category, [])
+    filtered = [t for t in all_tools if any(kw in t.name.lower() for kw in keywords)]
     _tools_filter_cache[category] = filtered or all_tools
+
     return _tools_filter_cache[category]
 
 # ============== Agent 创建 =============
@@ -159,19 +183,18 @@ async def get_agent_executor(category: str, tools: List[BaseTool]):
         _agent_cache[category] = agent
         return agent
 
-# ============== Agent 节点 =============
+# ============== Agent 执行节点 =============
 async def smart_home_agent(state: AgentState):
     """智能家居控制 agent，负责执行设备控制操作"""
     task = state.get("current_task", {})
-    print("当前 State: ", state)
+    print("当前 category: ", state.get("task_category"))
 
     tools = await filter_tools("smart_home_control")
-    print("当前使用工具: ", tools)
 
     agent = await get_agent_executor("smart_home_control", tools)
 
     resp = await agent.ainvoke(
-        {"messages": task},
+        {"messages": [HumanMessage(task)]},
         config={"configurable": {"thread_id": "1", "session_id": "user_1"}}
     )
 
@@ -180,39 +203,61 @@ async def smart_home_agent(state: AgentState):
 async def query_info_agent(state: AgentState):
     """信息查询 agent，负责执行状态查询操作"""
     task = state.get("current_task", {})
-    print("当前 State: ", state)
+    print("当前 category: ", state.get("task_category"))
 
     tools = await filter_tools("query_info")
-    print("当前使用工具: ", tools)
 
     agent = await get_agent_executor("query_info", tools)
 
     resp = await agent.ainvoke(
-        {"messages": task},
+        {"messages": [HumanMessage(task)]},
         config={"configurable": {"thread_id": "1", "session_id": "user_1"}}
     )
 
     return resp
-
 
 async def chat_agent(state: AgentState) -> AgentState:
     """聊天 agent，负责处理普通对话"""
     task = state.get("current_task", {})
-    print("当前 State: ", state)
+    print("当前 category: ", state.get("task_category"))
     
     tools = await filter_tools("chat")
-    print("当前使用工具: ", tools)
 
     agent = await get_agent_executor("chat", tools)
 
     resp = await agent.ainvoke(
-        {"messages": task},
+        {"messages": [HumanMessage(task)]},
         config={"configurable": {"thread_id": "1", "session_id": "user_1"}}
     )
 
     return resp
 
-def route_decision(state: AgentState):
+# ============= 路由决策函数 ================
+def type_decision(state: AgentState):
+    """"""
+    # simple（单一操作），complex（多步协同），mixed（多个独立任务）"
+    if state["task_type"] == "simple":
+        return "chat_agent"
+    elif state["task_type"] == "mixed":
+        return "task_spliter"
+    # elif state["task_type"] == "smart_home_control":
+    #     return "smart_home_agent"
+
+def simple_tasks(state: AgentState):
+    """
+    这个函数的作用是，从
+    sub_tasks: List[Dict[str, Any]]     # 处理后的子任务列表
+    中提取 current_task
+    然后送给 category_decision
+    但是这样的话，是不是要在 state 中写一个 current_idx？但是我觉得就算写了 current_idx 也不太对；想象一下
+    如果 这个节点在 graph 中走了两遍。。那应该怎么办，，
+    current_task: str        # 当前正在执行的任务
+    反正就是要在 state 中写入 current_task
+    """
+    pass
+
+
+def category_decision(state: AgentState):
     """路由决策函数，根据任务类别决定下一步执行的 agent"""
     if state["task_category"] == "chat":
         return "chat_agent"
@@ -229,6 +274,8 @@ def build_workflow():
     """
     builder = StateGraph(AgentState)
 
+    builder.add_node("type_router", type_router)
+    builder.add_node()
     builder.add_node("category_router", category_router)
     builder.add_node("smart_home_agent", smart_home_agent)
     builder.add_node("query_info_agent", query_info_agent)
@@ -237,7 +284,7 @@ def build_workflow():
     builder.add_edge(START, "category_router")
     builder.add_conditional_edges(
         "category_router",
-        route_decision,
+        category_decision,
         {  # Name returned by route_decision : Name of next node to visit
             "smart_home_agent": "smart_home_agent",
             "query_info_agent": "query_info_agent",
