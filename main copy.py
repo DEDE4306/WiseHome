@@ -5,21 +5,22 @@ import os
 from typing import TypedDict, Annotated, Literal, List, Callable, Coroutine, Any
 from dotenv import load_dotenv
 
-from langchain.agents import create_agent
+from langchain_classic.agents import AgentExecutor, create_structured_chat_agent
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables import RunnableWithMessageHistory
 from langchain_core.tools import BaseTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.graph import add_messages, StateGraph, END
 
 from db.chats import get_session_history
-from config.prompts import system_template, router_template
+from config.prompts_old import system_template, router_template
 
 # ========== 环境与模型初始化 ==========
 # 加载环境变量
 load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
+api_key = os.getenv("BAILIAN_API_KEY")
 
 # 模型初始化
 model = init_chat_model(
@@ -38,8 +39,7 @@ prompt = ChatPromptTemplate.from_messages([
     ("human", "{input} {agent_scratchpad}"),
 ])
 
-# ============ 类型定义 ============
-# TODO: 我现在不确定我的 Agent 是否能够获取历史消息，反正无论如何这个都是要改的，现在是不适配的
+# ========== 类型定义 ==========
 class AgentState(TypedDict):
     messages: Annotated[list, add_messages]     # 自动保存历史信息
     sub_tasks: List[dict]   # 拆分后的子任务，形式为：[{"task": "xxx", "category": "xxx"}]
@@ -70,7 +70,6 @@ def extract_json(text: str) -> dict:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
-    # 如果提取失败，尝试获取 {} 中的内容
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if match:
         try:
@@ -84,7 +83,7 @@ _tools_cache = None
 _tools_filter_cache = {}
 
 async def load_mcp_tools() -> List[BaseTool]:
-    """从服务器加载 MCP 工具，如果获取失败则抛出异常"""
+    """加载 MCP 工具，如果获取失败则抛出异常"""
     global _tools_cache
     if _tools_cache is not None:
         return _tools_cache
@@ -103,10 +102,9 @@ async def load_mcp_tools() -> List[BaseTool]:
             raise RuntimeError("获取到的工具为空")
         return _tools_cache
     except Exception as e:
+        # 捕获任何异常并抛出自定义错误
         raise RuntimeError(f"获取MCP工具失败: {e}") from e
 
-
-# TODO: 这个改掉，用 Dynamic Tools，配合中间件完成
 async def filter_tools_by_category(category: str) -> List[BaseTool]:
     global _tools_filter_cache
     if category in _tools_filter_cache:
@@ -114,18 +112,8 @@ async def filter_tools_by_category(category: str) -> List[BaseTool]:
 
     all_tools = await load_mcp_tools()
     keyword_map = {
-         "smart_home_control": [
-            "turn_on_ac", "turn_off_ac", "set_ac_temperature",
-            "add_ac_temperature", "minus_ac_temperature",
-            "turn_on_light", "turn_off_light", "set_light_brightness",
-            "add_light_brightness", "minus_light_brightness",
-            "play_music", "stop_music",
-        ],
-        "query_info": [
-            "get_ac_temperature", "get_light_brightness", "get_music_device",
-            "get_user_rooms", "get_room_devices", "get_user_preferences",
-            "get_time", "get_weather"
-        ],
+        "smart_home_control": ["turn", "set", "open", "close", "switch", "调节", "开", "关", "设置", "播放", "play", "stop", "add", "minus"],
+        "query_info": ["get", "query", "status", "weather", "list", "查询", "获取", "状态", "信息", "rooms", "room"]
     }
 
     keywords = keyword_map.get(category, [])
@@ -133,14 +121,12 @@ async def filter_tools_by_category(category: str) -> List[BaseTool]:
     _tools_filter_cache[category] = filtered or all_tools
     return _tools_filter_cache[category]
 
-
 # ========== Agent 执行层 ==========
 _agent_cache = {}
 _agent_cache_lock = asyncio.Lock()
 
-# TODO: 我觉得这个函数需要改掉，到时候用 Dynamic Tool
 async def get_agent_executor(category: str, tools: List[BaseTool]):
-    """获取指定类别的 agent"""
+    """获取指定类别的 agent executor（带缓存）"""
     if category in _agent_cache:
         return _agent_cache[category]
 
@@ -148,14 +134,27 @@ async def get_agent_executor(category: str, tools: List[BaseTool]):
         if category in _agent_cache:
             return _agent_cache[category]
 
-        agent = create_agent(model, tools=tools, system_prompt=system_template)
+        agent = create_structured_chat_agent(model, tools=tools, prompt=prompt)
+        executor = AgentExecutor.from_agent_and_tools(
+            agent=agent,
+            tools=tools,
+            verbose=True,
+            handle_parsing_errors=True,
+            max_iterations=5,
+            max_execution_time=30,
+        )
 
-        return agent
-
+        agent_with_memory = RunnableWithMessageHistory(
+            executor,
+            get_session_history,
+            input_messages_key="input",
+            history_messages_key="chat_history"
+        )
+        _agent_cache[category] = agent_with_memory
+        return agent_with_memory
 
 async def llm_route(user_input: str, context_info: str = "") -> dict:
     """使用 LLM 判断意图并拆分任务"""
-    # TODO: 目前是通过控制从数据库中取得的数据条数来控制历史记录的，不知道有没有别的方法可以控制，还是说就保留
     history = get_session_history("user_1", 2)
     recent_msgs = await history.aget_messages()
     history_text = ""

@@ -1,13 +1,7 @@
-from typing import TypedDict, Annotated, Literal, List, Callable, Coroutine, Any
 
-
-from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
-from langchain_core.tools import BaseTool
-from langchain_mcp_adapters.client import MultiServerMCPClient
-
-from core.model import create_model, Mongodb_checkpointer
 from core.workflow import smart_home_workflow
+from core.speech_recognition import get_voice_input
 
 
 # ========== 主循环 ==========
@@ -16,6 +10,7 @@ async def loop():
 
     while True:
         user_input = input("\n你: ").strip()
+        # user_input = await get_voice_input()
         if user_input.lower() in {"exit", "quit", "退出"}:
             print("AI: 再见！")
             break
@@ -25,19 +20,21 @@ async def loop():
             {"configurable": {"thread_id": "1"}},
         )
 
-        msgs = response.get("messages", [])
+        all_msgs = response.get("messages", [])
 
-        tool_output = None
-        ai_output = None
-
-        for msg in msgs:
+        # 找到本轮输入位置（从后往前找最后一个匹配的 HumanMessage）
+        current_round_msgs = []
+        for msg in reversed(all_msgs):
+            if isinstance(msg, HumanMessage) and msg.content == user_input:
+                break
+            if isinstance(msg, AIMessage):
+                current_round_msgs.append( msg.content)
             if isinstance(msg, ToolMessage):
-                # 工具调用的结果
-                tool_output = msg.content if msg.content else "无工具输出"
+                current_round_msgs.append(msg.content)
 
-            elif isinstance(msg, AIMessage):
-                # AI 的回复
-                ai_output = msg.content if msg.content else "无AI回复"
-
-        print("Tool: ", tool_output)
-        print("AI: ", ai_output)
+        # TODO: 输出部分需要重新写了
+        output = reversed(current_round_msgs)
+        print("所有输出: ")
+        for msg in output:
+            if msg != "":
+                print(msg)

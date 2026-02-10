@@ -13,7 +13,7 @@ api_key = os.getenv("OPENAI_API_KEY")
 # 创建模型
 def create_model():
     model = init_chat_model(
-        "qwen3-32b",
+        "qwen3-4b",
         model_provider="openai",
         base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
         api_key=api_key,

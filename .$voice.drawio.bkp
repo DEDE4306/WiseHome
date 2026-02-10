@@ -7,9 +7,6 @@
         <mxCell id="startNode" value="" style="ellipse;html=1;shape=startState;fillColor=#000000;strokeColor=#ff0000;" parent="1" vertex="1">
           <mxGeometry x="341" y="50" width="30" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="2v61ZorceBwLH9AJOlvd-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="micNode" target="preprocessNode">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
         <mxCell id="micNode" value="麦克风实时采音" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
           <mxGeometry x="296" y="120" width="120" height="50" as="geometry" />
         </mxCell>
@@ -28,7 +25,7 @@
         <mxCell id="2v61ZorceBwLH9AJOlvd-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="vadNode" target="cacheAudioNode">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="vadNode" value="VAD 判断语音是否结束" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+        <mxCell id="vadNode" value="VAD判断语音" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
           <mxGeometry x="296" y="410" width="120" height="50" as="geometry" />
         </mxCell>
         <mxCell id="cacheAudioNode" value="缓存音频片段" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
@@ -58,14 +55,22 @@
         <mxCell id="edge1" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;verticalAlign=bottom;endArrow=open;endSize=8;strokeColor=#ff0000;rounded=0;" parent="1" source="startNode" target="micNode" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
+        <mxCell id="edge2" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;verticalAlign=bottom;endArrow=open;endSize=8;strokeColor=#000000;rounded=0;" parent="1" source="micNode" target="preprocessNode" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;verticalAlign=bottom;endArrow=open;endSize=8;strokeColor=#000000;rounded=0;" parent="1" source="preprocessNode" target="wakeupDecisionNode" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2v61ZorceBwLH9AJOlvd-1" value="未唤醒" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="edge3">
+          <mxGeometry x="-0.1449" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
         <mxCell id="2v61ZorceBwLH9AJOlvd-9" value="语音未结束" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
           <mxGeometry x="207" y="408" width="80" height="30" as="geometry" />
         </mxCell>
         <mxCell id="2v61ZorceBwLH9AJOlvd-10" value="语音结束" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
           <mxGeometry x="422" y="409" width="70" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="2v61ZorceBwLH9AJOlvd-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="preprocessNode" target="wakeupDecisionNode">
-          <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
