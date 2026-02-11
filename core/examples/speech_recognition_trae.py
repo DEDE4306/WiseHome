@@ -45,12 +45,15 @@ class SimpleVoiceRecognizer:
         self.processing_thread = None
         self.processing_stop_event = threading.Event()
 
+
+    # 这句话不知道什么意思，为什么有事件循环这种让人摸不清头脑的东西
     async def get_voice_input(self) -> str:
         """启动一次语音输入，返回识别出的完整句子"""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self._record_and_recognize)
 
     def _record_and_recognize(self) -> str:
+        """录音并识别语音"""
         self.final_result = ""
         self.is_listening = True
         
@@ -93,7 +96,7 @@ class SimpleVoiceRecognizer:
             if status.input_overflow:
                 # 只在第一次溢出时打印
                 if not hasattr(self, '_overflow_logged'):
-                    print("⚠️ 警告: 音频缓冲区溢出，考虑增大 blocksize 或减少处理量")
+                    print("警告: 音频缓冲区溢出，考虑增大 blocksize 或减少处理量")
                     self._overflow_logged = True
             else:
                 print(f"Audio status: {status}")

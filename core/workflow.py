@@ -1,8 +1,8 @@
 import asyncio
 from typing import List, Dict, Any, Callable
+from collections.abc import Coroutine
 
 from langchain.agents import create_agent
-from langchain.agents.middleware import ModelRequest, ModelResponse, wrap_model_call
 from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, AIMessage
 from langchain_core.tools import BaseTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from typing_extensions import Annotated, TypedDict, Literal
 
 from core.model import create_model, Mongodb_checkpointer
+from core.speech import get_voice_input
 from config.prompts import type_router_template, category_router_template, system_template, task_splitter_template, complex_task_template
 
 # ============== 全局缓存 ==============

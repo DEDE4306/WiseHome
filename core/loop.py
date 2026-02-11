@@ -1,7 +1,7 @@
 
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from core.workflow import smart_home_workflow
-from core.speech_recognition import get_voice_input
+from core.speech_recognition_trae import get_voice_input
 
 
 # ========== 主循环 ==========
