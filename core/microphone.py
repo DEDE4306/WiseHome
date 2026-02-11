@@ -28,6 +28,8 @@ def callback(indata, frames, time, status):
         print("Status:", status)
 
     audio = indata[:, 0]
+    audio = np.array(audio)
+    
     all_audio.append(audio)
 
     volume = np.abs(audio).mean()
@@ -40,11 +42,8 @@ def callback(indata, frames, time, status):
             input=audio,
             cache=cache,
             is_final=False,
-            chunk_size=chunk_size,
-            encoder_chunk_look_back=encoder_chunk_look_back,
-            decoder_chunk_look_back=decoder_chunk_look_back
+            chunk_size=9600,
         )
-        print(f"识别结果: {res[0]['text']}")
     except Exception as e:
         print(f"识别错误: {e}")
 

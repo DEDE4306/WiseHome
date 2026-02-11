@@ -24,7 +24,7 @@ _agent_cache_lock = asyncio.Lock()
 class AgentState(TypedDict):
     """Agent 状态定义，用于在 workflow 节点间传递数据"""
     messages: Annotated[list[AnyMessage], add_messages]     # 会话消息列表
-    input: str      # 直接输入
+    input: str      # 处理后的消息输入
     task_type: Literal["simple", "complex", "mixed"]        # 任务类型
     task_category: Literal["chat", "query_info", "smart_home_control"]    # 子任务类型
     sub_tasks: List[Dict[str, Any]]     # 处理后的子任务列表
@@ -76,21 +76,20 @@ async def load_mcp_tools() -> List[BaseTool]:
 
 # ============== llm 初始化 ==============
 model = create_model()
-
+# 类型路由 llm
 type_router_llm = model.with_structured_output(RouteTaskType)
-
+# 分类路由 llm
 category_router_llm = model.with_structured_output(RouteCategory)
-
+# 任务拆分 llm
 task_splitter_llm = model.with_structured_output(TaskResult)
-
+# 复杂任务处理 llm
 complex_task_llm = model.with_structured_output(TaskResult)
 
 # ============== 入口函数 ==============
 def entry(state: AgentState):
     return {
-        "input": state["messages"][-1].content
+        "input": state["messages"][-1].content   # 初始化 input
     }
-
 
 # ============== 路由函数 ==============
 def type_router(state: AgentState) -> dict:
@@ -130,28 +129,22 @@ def simple_tasks(state: AgentState) -> dict:
         state: Agent 状态
         
     Returns:
-        更新后的状态，包含 current_task 和 current_idx
+        更新后的 current_task 和 current_idx
     """
     sub_tasks = state.get("sub_tasks", [])
     current_idx = state.get("current_idx", 0)
+    current_task = ""
     
     if sub_tasks:
         if current_idx < len(sub_tasks):
             current_task = sub_tasks[current_idx].get("task", "")
-            return {
-                "current_task": current_task,
-                "current_idx": current_idx + 1
-            }
-        return {
-            "current_task": "",
-            "current_idx": current_idx + 1
-        }
     else:
-        return {
-            "current_task": state["input"],
-            "current_idx": current_idx + 1
-        }
+        current_task = state["input"]
 
+    return {
+        "current_task": current_task,
+        "current_idx": current_idx + 1
+    }
 
 def task_splitter(state: AgentState) -> dict:
     """拆分混合任务为多个子任务"""
@@ -168,12 +161,14 @@ def task_splitter(state: AgentState) -> dict:
     }
 
 def complex_tasks(state: AgentState) -> dict:
+    """处理复杂任务，生成查询信息"""
     result = complex_task_llm.invoke([
         SystemMessage(content=complex_task_template),
         HumanMessage(content=state["input"])
     ])
 
     print("查询任务: ", result.sub_tasks[0].get("task", ""))
+
     return {
         "sub_tasks": result.sub_tasks,
         "current_task": result.sub_tasks[0].get("task", ""),
@@ -181,7 +176,9 @@ def complex_tasks(state: AgentState) -> dict:
     }
 
 async def get_more_info(state: AgentState) -> dict:
+    """获取查询任务的额外信息"""
     task = state["current_task"]
+
     tools = await filter_tools("query_info")
 
     agent = await get_agent_executor("query_info", tools)
@@ -190,6 +187,7 @@ async def get_more_info(state: AgentState) -> dict:
         {"messages": [HumanMessage(task)]},
         config={"configurable": {"thread_id": "1", "session_id": "user_1"}}
     )
+
     message = resp.get("messages", [])[-1].content
     input = state["input"]
     input = "用户需求: " + input + "。额外信息: " + message
@@ -238,7 +236,8 @@ async def filter_tools(category: str) -> List[BaseTool]:
             "play_music", "stop_music",
         ],
         "query_info": [
-            "get_ac_temperature", "get_light_brightness", "get_music_device",
+            "get_ac_temperature", "get_light_brightness", 
+            "get_music_device", 
             "get_user_rooms", "get_room_devices", "get_user_preferences",
             "get_time", "get_weather"
         ],
@@ -272,53 +271,49 @@ async def get_agent_executor(category: str, tools: List[BaseTool]):
         if category in _agent_cache:
             return _agent_cache[category]
         
-        from langchain.agents import create_agent
-        
         agent = create_agent(model, tools=tools, system_prompt=system_template, checkpointer=Mongodb_checkpointer)
         _agent_cache[category] = agent
         return agent
 
 # ============== Agent 执行节点 =============
+def safe_async(func: Callable[..., Coroutine[Any, Any, AgentState]]):
+    """装饰器：捕获 agent 异常并保持状态"""
+    async def wrapper(state: AgentState):
+        try:
+            return await func(state)
+        except Exception as e:
+            print(f"[Error] {func.__name__} -> {e}")
+            return {
+                "messages": [AIMessage(content=f"执行失败：{e}")],
+            }
+    return wrapper
+
+@safe_async
 async def smart_home_agent(state: AgentState):
     """智能家居控制 agent，负责执行设备控制操作"""
     task = state.get("current_task", {})
-    print("正在执行任务: ", task)
-
-    tools = await filter_tools("smart_home_control")
-
-    agent = await get_agent_executor("smart_home_control", tools)
-
-    resp = await agent.ainvoke(
-        {"messages": [HumanMessage(task)]},
-        config={"configurable": {"thread_id": "1", "session_id": "user_1"}}
-    )
-
+    resp = await execute_task("smart_home_control", task)
     return resp
 
+@safe_async
 async def query_info_agent(state: AgentState):
     """信息查询 agent，负责执行状态查询操作"""
     task = state.get("current_task", {})
-    print("正在执行任务", task)
-
-    tools = await filter_tools("query_info")
-
-    agent = await get_agent_executor("query_info", tools)
-
-    resp = await agent.ainvoke(
-        {"messages": [HumanMessage(task)]},
-        config={"configurable": {"thread_id": "1", "session_id": "user_1"}}
-    )
-
+    resp = await execute_task("query_info", task)
     return resp
 
+@safe_async
 async def chat_agent(state: AgentState) -> AgentState:
     """聊天 agent，负责处理普通对话"""
     task = state.get("current_task", {})
-    print("正在执行任务: ", task)
-    
-    tools = await filter_tools("chat")
+    resp = await execute_task("chat", task)
+    return resp
 
-    agent = await get_agent_executor("chat", tools)
+async def execute_task(type: str, task: str):
+    """执行指定类型的任务"""
+    print("正在执行任务: ", task)
+    tools = await filter_tools(type)
+    agent = await get_agent_executor(type, tools)
 
     resp = await agent.ainvoke(
         {"messages": [HumanMessage(task)]},
@@ -329,8 +324,7 @@ async def chat_agent(state: AgentState) -> AgentState:
 
 # ============= 路由决策函数 ================
 def type_decision(state: AgentState):
-    """"""
-    # simple（单一操作），complex（多步协同），mixed（多个独立任务）"
+    """路由决策函数，根据任务类型决定下一步执行的节点"""
     if state["task_type"] == "simple":
         return "category_router"
     elif state["task_type"] == "mixed":
@@ -348,72 +342,6 @@ def category_decision(state: AgentState):
     elif state["task_category"] == "smart_home_control":
         return "smart_home_agent"
 
-def build_workflow():
-    """构建 workflow 图，包含路由节点和各个 agent 节点
-    
-    Returns:
-        编译后的 workflow 实例
-    """
-    builder = StateGraph(AgentState)
-
-    builder.add_node("entry", entry)
-    builder.add_node("type_router", type_router)
-    builder.add_node("task_splitter", task_splitter)
-    builder.add_node("simple_tasks", simple_tasks)
-    builder.add_node("complex_tasks", complex_tasks)
-    builder.add_node("get_more_info", get_more_info)
-    builder.add_node("generate_new_tasks", generate_new_tasks)
-    builder.add_node("category_router", category_router)
-    builder.add_node("smart_home_agent", smart_home_agent)
-    builder.add_node("query_info_agent", query_info_agent)
-    builder.add_node("chat_agent", chat_agent)
-
-    builder.set_entry_point("entry")
-    builder.add_edge("entry", "type_router")
-
-    builder.add_conditional_edges(
-        "type_router",
-        type_decision,
-        {
-            "category_router": "simple_tasks",
-            "task_splitter": "task_splitter",
-            "complex_tasks": "complex_tasks"
-        },
-    )
-
-    builder.add_edge("task_splitter", "simple_tasks")
-
-    builder.add_conditional_edges(
-        "simple_tasks",
-        should_continue,
-        {
-            "continue": "category_router",
-            "end": END,
-        },
-    )
-
-    builder.add_edge("complex_tasks", "get_more_info")
-    builder.add_edge("get_more_info", "generate_new_tasks")
-    builder.add_edge("generate_new_tasks", "simple_tasks")
-    
-    # 从 category_router 到各个 agent
-    builder.add_conditional_edges(
-        "category_router",
-        category_decision,
-        {
-            "smart_home_agent": "smart_home_agent",
-            "query_info_agent": "query_info_agent",
-            "chat_agent": "chat_agent",
-        },
-    )
-
-    builder.add_edge("smart_home_agent", "simple_tasks")
-    builder.add_edge("query_info_agent", "simple_tasks")
-    builder.add_edge("chat_agent", "simple_tasks")
-
-    workflow = builder.compile(checkpointer=Mongodb_checkpointer)
-    return workflow
-
 def should_continue(state: AgentState):
     """判断是否还有任务需要执行
 
@@ -428,5 +356,83 @@ def should_continue(state: AgentState):
         print(f"当前执行任务: {current_idx}/{tasks_len}", )
         return "continue"
     return "end"
+
+def build_workflow():
+    """构建 workflow 图，包含路由节点和各个 agent 节点
+    
+    Returns:
+        编译后的 workflow 实例
+    """
+    builder = StateGraph(AgentState)
+
+    # 入口
+    builder.add_node("entry", entry)
+    # 类型路由
+    builder.add_node("type_router", type_router)
+    # 分解任务
+    builder.add_node("task_splitter", task_splitter)
+    builder.add_node("simple_tasks", simple_tasks)
+    builder.add_node("complex_tasks", complex_tasks)
+    builder.add_node("get_more_info", get_more_info)
+    builder.add_node("generate_new_tasks", generate_new_tasks)
+    # 分类路由
+    builder.add_node("category_router", category_router)
+    # 执行节点
+    builder.add_node("smart_home_agent", smart_home_agent)
+    builder.add_node("query_info_agent", query_info_agent)
+    builder.add_node("chat_agent", chat_agent)
+
+
+    # 设置入口
+    builder.set_entry_point("entry")
+    builder.add_edge("entry", "type_router")
+
+    builder.add_conditional_edges(
+        "type_router",
+        type_decision,
+        {
+            "category_router": "simple_tasks",
+            "task_splitter": "task_splitter",
+            "complex_tasks": "complex_tasks"
+        },
+    )
+
+    # 任务分解
+    builder.add_edge("task_splitter", "simple_tasks")
+
+    # 是否还有未处理完成的任务
+    builder.add_conditional_edges(
+        "simple_tasks",
+        should_continue,
+        {
+            "continue": "category_router",
+            "end": END,
+        },
+    )
+
+    # 复杂任务处理
+    builder.add_edge("complex_tasks", "get_more_info")
+    builder.add_edge("get_more_info", "generate_new_tasks")
+    builder.add_edge("generate_new_tasks", "simple_tasks")
+    
+    # 从 category_router 到各个 agent
+    builder.add_conditional_edges(
+        "category_router",
+        category_decision,
+        {
+            "smart_home_agent": "smart_home_agent",
+            "query_info_agent": "query_info_agent",
+            "chat_agent": "chat_agent",
+        },
+    )
+    
+    # 重回判断节点
+    builder.add_edge("smart_home_agent", "simple_tasks")
+    builder.add_edge("query_info_agent", "simple_tasks")
+    builder.add_edge("chat_agent", "simple_tasks")
+
+    workflow = builder.compile(checkpointer=Mongodb_checkpointer)
+    return workflow
+
 
 smart_home_workflow = build_workflow()
