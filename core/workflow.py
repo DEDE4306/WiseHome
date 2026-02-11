@@ -168,7 +168,6 @@ def task_splitter(state: AgentState) -> dict:
     }
 
 def complex_tasks(state: AgentState) -> dict:
-    print("未拆分的混合任务: ", state["input"])
     result = complex_task_llm.invoke([
         SystemMessage(content=complex_task_template),
         HumanMessage(content=state["input"])
@@ -193,7 +192,7 @@ async def get_more_info(state: AgentState) -> dict:
     )
     message = resp.get("messages", [])[-1].content
     input = state["input"]
-    input += message
+    input = "用户需求: " + input + "。额外信息: " + message
 
     return {"input": input}
 
@@ -275,7 +274,7 @@ async def get_agent_executor(category: str, tools: List[BaseTool]):
         
         from langchain.agents import create_agent
         
-        agent = create_agent(model, tools=tools, system_prompt=system_template)
+        agent = create_agent(model, tools=tools, system_prompt=system_template, checkpointer=Mongodb_checkpointer)
         _agent_cache[category] = agent
         return agent
 

@@ -36,6 +36,7 @@ task_splitter_template = """
 输出：{{"sub_tasks": [{{"task": "打开客厅灯"}}, {{"task": "查询卧室空调温度"}}]}}
 """
 
+
 complex_task_template = """
 你可以看到一个信息不全的任务，需要先进行查询操作，输出 JSON 格式
 ## 示例：
@@ -46,6 +47,11 @@ complex_task_template = """
 输入：播放我最喜欢的音乐
 输出： {{"sub_tasks": [
   {{"task": "查询用户最喜欢的音乐"}},
+]}}
+
+输入： 帮我看看我有空调忘记关掉了吗
+输出： {{"sub_tasks": [
+  {{"task": "查询用户的所有空调设备"}},
 ]}}
 """
 
