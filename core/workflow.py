@@ -2,24 +2,38 @@ import asyncio
 from typing import List, Dict, Any, Callable
 from collections.abc import Coroutine
 
-from langchain.agents import create_agent
-from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, AIMessage
-from langchain_core.tools import BaseTool
-from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain.agents.middleware import before_model
 from langgraph.constants import START, END
 from langgraph.graph import add_messages, StateGraph
+from langchain.agents import create_agent
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain_core.tools import BaseTool
+from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, AIMessage, RemoveMessage, ToolMessage
+from langgraph.graph.message import REMOVE_ALL_MESSAGES
+from langgraph.runtime import Runtime
+
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated, TypedDict, Literal
 
 from core.model import create_model, Mongodb_checkpointer
 from core.speech import get_voice_input
-from config.prompts import type_router_template, category_router_template, system_template, task_splitter_template, complex_task_template
+from config.prompts import type_router_template, category_router_template, system_template, task_splitter_template, complex_task_template, react_template
+
+from config.constants import REACT_OUTPUT
 
 # ============== 全局缓存 ==============
 _tools_cache = None
 _tools_filter_cache = {}
 _agent_cache = {}
 _agent_cache_lock = asyncio.Lock()
+
+# ============== 全局变量 ==============
+_VERBOSE = False
+
+def log_print(*args, **kwargs):
+    """封装的打印函数，根据 _VERBOSE 决定是否输出"""
+    if _VERBOSE:
+        print(*args, **kwargs)
 
 # ============= State 定义 ============
 class AgentState(TypedDict):
@@ -70,10 +84,10 @@ async def load_mcp_tools() -> List[BaseTool]:
         )
         _tools_cache = await client.get_tools()
         if _tools_cache is None:
-            raise RuntimeError("警告: 获取到的工具为空")
+            raise RuntimeError("[Warning] 警告: 获取到的工具为空")
         return _tools_cache
     except Exception as e:
-        raise RuntimeError(f"获取MCP工具失败: {e}") from e
+        raise RuntimeError(f"[Error] 获取MCP工具失败: {e}") from e
 
 # ============== llm 初始化 ==============
 model = create_model()
@@ -101,7 +115,7 @@ def type_router(state: AgentState) -> dict:
         HumanMessage(content=state["input"])
     ])
 
-    print("判断当前任务类型: ", result.task_type)
+    log_print("[Router] 判断当前任务类型: ", result.task_type)
 
     return {
         "task_type": result.task_type,
@@ -154,7 +168,7 @@ def task_splitter(state: AgentState) -> dict:
         HumanMessage(content=state["input"])
     ])
 
-    print("任务拆分结果: ", "; ".join(f"{i+1}. {item['task']}" for i, item in enumerate(result.sub_tasks)))
+    log_print("[Router] 任务拆分结果: ", "; ".join(f"{i+1}. {item['task']}" for i, item in enumerate(result.sub_tasks)))
 
     return {
         "sub_tasks": result.sub_tasks,
@@ -168,7 +182,7 @@ def complex_tasks(state: AgentState) -> dict:
         HumanMessage(content=state["input"])
     ])
 
-    print("查询任务: ", result.sub_tasks[0].get("task", ""))
+    log_print("[Router] 查询任务: ", result.sub_tasks[0].get("task", ""))
 
     return {
         "sub_tasks": result.sub_tasks,
@@ -197,14 +211,14 @@ async def get_more_info(state: AgentState) -> dict:
 
 def generate_new_tasks(state: AgentState) -> dict:
     """拆分混合任务为多个子任务"""
-    print("未拆分的混合任务: ", state["input"])
+    log_print("[Router] 未拆分的混合任务: ", state["input"])
 
     result = task_splitter_llm.invoke([
         SystemMessage(content=task_splitter_template),
         HumanMessage(content=state["input"])
     ])
 
-    print("任务拆分结果: ", "; ".join(f"{i+1}. {item['task']}" for i, item in enumerate(result.sub_tasks)))
+    log_print("[Router] 任务拆分结果: ", "; ".join(f"{i+1}. {item['task']}" for i, item in enumerate(result.sub_tasks)))
 
     return {
         "sub_tasks": result.sub_tasks,
@@ -227,6 +241,12 @@ async def filter_tools(category: str) -> List[BaseTool]:
         - smart_home_control: 返回控制类工具
     """
     global _tools_filter_cache
+
+
+    # 完全调试用，可以注释掉
+    if category == "chat":
+        _tools_filter_cache["chat"] = []
+        return []
     
     keyword_map = {
         "smart_home_control": [
@@ -242,7 +262,6 @@ async def filter_tools(category: str) -> List[BaseTool]:
             "get_user_rooms", "get_room_devices", "get_user_preferences",
             "get_time", "get_weather"
         ],
-        "chat": []
     }
 
     all_tools = await load_mcp_tools()
@@ -253,7 +272,7 @@ async def filter_tools(category: str) -> List[BaseTool]:
     return _tools_filter_cache[category]
 
 # ============== Agent 创建 =============
-async def get_agent_executor(category: str, tools: List[BaseTool]):
+async def get_agent_executor(category: str, tools: List[BaseTool], verbose: bool = REACT_OUTPUT):
     """获取指定类别的 agent，使用缓存避免重复创建
     
     Args:
@@ -271,12 +290,37 @@ async def get_agent_executor(category: str, tools: List[BaseTool]):
     async with _agent_cache_lock:
         if category in _agent_cache:
             return _agent_cache[category]
+
+        prompt = system_template
+        # if verbose:
+        #     prompt += react_template
+
         
-        agent = create_agent(model, tools=tools, system_prompt=system_template, checkpointer=Mongodb_checkpointer)
+        agent = create_agent(
+            model, 
+            tools=tools, 
+            system_prompt=prompt,
+            # middleware=[trim_messages],
+            checkpointer=Mongodb_checkpointer
+        )
+
         _agent_cache[category] = agent
         return agent
 
 # ============== Agent 执行节点 =============
+# @before_model
+# def trim_messages(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
+#     """Keep only the last few messages to fit context window."""
+#     messages = state["messages"]
+#
+#
+#     return {
+#         "messages": [
+#             *messages
+#         ]
+#     }
+
+
 def safe_async(func: Callable[..., Coroutine[Any, Any, AgentState]]):
     """装饰器：捕获 agent 异常并保持状态"""
     async def wrapper(state: AgentState):
@@ -289,30 +333,30 @@ def safe_async(func: Callable[..., Coroutine[Any, Any, AgentState]]):
             }
     return wrapper
 
-@safe_async
+# @safe_async
 async def smart_home_agent(state: AgentState):
     """智能家居控制 agent，负责执行设备控制操作"""
     task = state.get("current_task", {})
-    resp = await execute_task("smart_home_control", task)
+    resp = await execute_task(state, "smart_home_control", task)
     return resp
 
-@safe_async
+#@safe_async
 async def query_info_agent(state: AgentState):
     """信息查询 agent，负责执行状态查询操作"""
     task = state.get("current_task", {})
-    resp = await execute_task("query_info", task)
+    resp = await execute_task(state, "query_info", task)
     return resp
 
-@safe_async
+#@safe_async
 async def chat_agent(state: AgentState) -> AgentState:
     """聊天 agent，负责处理普通对话"""
     task = state.get("current_task", {})
-    resp = await execute_task("chat", task)
+    resp = await execute_task(state, "chat", task)
     return resp
 
-async def execute_task(type: str, task: str):
+async def execute_task(state: AgentState, type: str, task: str):
     """执行指定类型的任务"""
-    print("正在执行任务: ", task)
+    log_print("[Task] 正在执行任务: ", task)
     tools = await filter_tools(type)
     agent = await get_agent_executor(type, tools)
 
@@ -335,7 +379,7 @@ def type_decision(state: AgentState):
 
 def category_decision(state: AgentState):
     """路由决策函数，根据任务类别决定下一步执行的 agent"""
-    print("开始路由决策，当前 category:", state.get("task_category"))
+    log_print("[Router] 开始路由决策，当前 category:", state.get("task_category"))
     if state["task_category"] == "chat":
         return "chat_agent"
     elif state["task_category"] == "query_info":
@@ -354,16 +398,19 @@ def should_continue(state: AgentState):
     tasks_len = max(len(sub_tasks), 1)
 
     if current_idx <= tasks_len:
-        print(f"当前执行任务: {current_idx}/{tasks_len}", )
+        log_print(f"[Router] 当前执行任务: {current_idx}/{tasks_len}", )
         return "continue"
     return "end"
 
-def build_workflow():
+def build_workflow(verbose: bool = False):
     """构建 workflow 图，包含路由节点和各个 agent 节点
     
     Returns:
         编译后的 workflow 实例
     """
+    global _VERBOSE
+    _VERBOSE = verbose
+
     builder = StateGraph(AgentState)
 
     # 入口
@@ -434,6 +481,3 @@ def build_workflow():
 
     workflow = builder.compile(checkpointer=Mongodb_checkpointer)
     return workflow
-
-
-smart_home_workflow = build_workflow()

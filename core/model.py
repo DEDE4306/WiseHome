@@ -1,9 +1,11 @@
 import os
 from dotenv import load_dotenv
 
+
 from langchain.chat_models import init_chat_model
 from langgraph.checkpoint.mongodb import MongoDBSaver
 from db.connection import MongoConnection, URI, DB_NAME, CHAT_COLLECTION_NAME
+
 
 # ========== 创建模型 ==========
 # 加载环境变量
@@ -22,7 +24,7 @@ def create_model():
     )
     return model
 
-# =========== 短期记忆 ===========
+# =========== 全局短期记忆 ===========
 Mongodb_checkpointer = MongoDBSaver(
     client=MongoConnection.get_client(),
     db_name=DB_NAME,

@@ -11,15 +11,15 @@ from pathlib import Path
 # 模型缓存目录；如果能够获取到缓存则使用缓存目录中的模型，否则从互联网下载模型
 MODEL_CACHE_DIR = "model"
 
-VAD_MODEL = "SenseVoiceSmall"
-ASR_MODEL = "fsmn-vad"
+VAD_MODEL = "fsmn-vad"
+ASR_MODEL = "SenseVoiceSmall"
 
 VAD_DIR = Path(MODEL_CACHE_DIR) / VAD_MODEL
 ASR_DIR = Path(MODEL_CACHE_DIR) / ASR_MODEL
 
 SAMPLE_RATE = 16000
 CHUNK_SIZE = 9600
-CHUNK_SIZE_MS = CHUNK_SIZE * 1000 / SAMPLE_RATE
+CHUNK_SIZE_MS = int(CHUNK_SIZE * 1000 / SAMPLE_RATE)
 
 CHANNELS = 1
 
@@ -34,6 +34,7 @@ class VoiceRecognizer:
         self.sample_rate = SAMPLE_RATE
         self.chunk_size = CHUNK_SIZE
         self.chunk_size_ms = CHUNK_SIZE_MS
+        self.channels = CHANNELS
 
         self.cache_vad = {}
         self.cache_asr = {}
@@ -45,6 +46,7 @@ class VoiceRecognizer:
         self.segment_start_time = None
 
         self.audio_buffer = np.array([], dtype=np.float32)
+        self.audio_vad = np.array([], dtype=np.float32)
 
     def _audio_callback(self, indata, frames, time, status):
         """音频流回调"""
@@ -73,6 +75,7 @@ class VoiceRecognizer:
             return ""
 
     def _get_segment(self, res):
+        print(f"vad inference: {res}")
         if len(res[0]["value"]):
             vad_segments = res[0]["value"]
             for segment in vad_segments:
@@ -95,8 +98,9 @@ class VoiceRecognizer:
                     end = int(self.last_vad_end * self.sample_rate / 1000)
 
                     return beg, end
+        return None, None
 
-    def get_voice_input(self):
+    async def get_voice_input(self) -> str:
         """获取语音输入"""
         with sd.InputStream(
             samplerate=self.sample_rate,
@@ -105,27 +109,28 @@ class VoiceRecognizer:
             blocksize=self.chunk_size,
             callback=self._audio_callback,
         ):
-            try:
-                while True:
-                    if len(audio_buffer) < self.chunk_size:
-                        time.sleep(0.01)
-                        continue
+            while True:
+                if len(self.audio_buffer) < self.chunk_size:
+                    sd.sleep(1)
+                    continue
 
-                    chunk = audio_buffer[:self.chunk_size]
-                    audio_buffer = audio_buffer[self.chunk_size:]
-                    audio_vad = np.append(audio_vad, chunk)
+                chunk = self.audio_buffer[:self.chunk_size]
+                self.audio_buffer = self.audio_buffer[self.chunk_size:]
+                self.audio_vad = np.append(self.audio_vad, chunk)
 
-                    beg, end = self._get_segment(self.vad_model.generate(
-                        input=chunk,
-                        cache=self.cache_vad,
-                        is_final=False,
-                        chunk_size=self.chunk_size_ms
-                    ))
+                vad_result = self.vad_model.generate(
+                    input=chunk,
+                    is_final=False,
+                    chunk_size=self.chunk_size_ms
+                )
+                
+                beg, end = self._get_segment(vad_result)
 
-                    result = self._recognize(audio_vad[beg:end])
+                if beg is not None and end is not None:
+                    result = self._recognize(self.audio_vad[beg:end])
+                    self.audio_vad = np.array([], dtype=np.float32)
+                    return result
 
-            except Exception as e:
-                print(f"发生错误: {e}")
 
 # 全局实例
 _recognizer = None

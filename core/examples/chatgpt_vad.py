@@ -90,7 +90,7 @@ with sd.InputStream(
                         logger.info(f"[vad] 语音段长度: {end - beg} samples")
 
                         # ---------- ASR ----------
-                        result = asr(
+                        result = model_asr.generate(
                             audio_vad[beg:end],
                             lang="auto",
                             cache=cache_asr,
@@ -102,8 +102,9 @@ with sd.InputStream(
                             logger.info(f"[segment] 识别耗时: {elapsed:.2f} ms")
 
                         if result is not None:
-                            text = format_str_v3(result[0]["text"])
+                            text = result[0]["text"]
                             logger.info(f"[ASR] {text}")
+                            print(text)
 
                         # ---------- reset ----------
                         audio_vad = audio_vad[end:]

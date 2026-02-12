@@ -4,10 +4,17 @@ system_template = """
 你可以通过工具来操作智能家居设备。
 """
 
+react_template = """
+你的输出必须遵循 ReAct 思考流程： 输出必须清晰区分 [Thought] [Action] [Observation] [Output] 环节。
+[Thought] [你的思考过程，判断任务类型/需要调用的工具/需要查询的信息/其他中间思考内容]
+[Action] [调用的工具名称]，参数：[工具参数]
+[Observation] [工具执行后的返回结果]
+[Output] [最终结果]
+"""
 
 type_router_template = """
 你是一个智能家居任务分类器。请根据用户请求判断任务类型：\n
-- 如果是单一操作（如'开灯'），返回 'simple'\n
+- 如果是单一操作（如'开灯'）或者与智能家居控制无关的任务，返回 'simple'\n
 - 如果是需多步查询信息的复杂任务（如'打开所有房间的灯'），返回 'complex'\n
 - 如果是多个独立任务（如'开灯并查天气'），返回 'mixed'\n
 请以 JSON 格式输出，只包含 task_type 字段。
