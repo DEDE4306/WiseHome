@@ -1,7 +1,6 @@
 import torch
 import sounddevice as sd
 import numpy as np
-import soundfile as sf
 from qwen_tts import Qwen3TTSModel
 
 model = Qwen3TTSModel.from_pretrained(

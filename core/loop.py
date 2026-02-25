@@ -23,7 +23,7 @@ async def loop(
     smart_home_workflow = build_workflow(verbose=react_output)
     print("MCP 智能家居系统已启动！")
     recognizer = get_recognizer()
-    
+
     THREAD_ID = "persistent_user_session"
 
     while True:
@@ -43,58 +43,68 @@ async def loop(
         if react_output:
             print("-" * 40)
 
-        all_messages_this_turn = []
+        config = {"configurable": {"thread_id": THREAD_ID}}
+        checkpoint_tuple = await smart_home_workflow.checkpointer.aget_tuple(config)
+        if checkpoint_tuple is None:
+            history_len = 0
+        else:
+            history_len = len(checkpoint_tuple.checkpoint["channel_values"]["messages"])
+
+        all_new_messages = []
 
         try:
-            ai_msg: str = ""
-
             async for chunk in smart_home_workflow.astream(
                     {"messages": [HumanMessage(content=user_input)]},
                     {"configurable": {"thread_id": THREAD_ID}},
-                    stream_mode="updates"
+                    stream_mode="values"
             ):
-                for node_name, node_data in chunk.items():
-                    if "messages" in node_data:
-                        all_messages_this_turn.extend(node_data["messages"])
+                current_msgs = chunk["messages"]
+                new_msgs = current_msgs[history_len:]
+                all_new_messages.extend(new_msgs)
+                history_len = len(current_msgs)
 
-            recent_msgs = all_messages_this_turn[-10:]
-            ai_tool_msgs = []
+            tool_call_msgs = []
+            tool_response_msgs = []
+            ai_msgs = []  # 这个是 List[str]
 
-            for msg in reversed(recent_msgs):
-                if isinstance(msg, HumanMessage):
-                    break
-                ai_tool_msgs.append(msg)
+            for msg in all_new_messages:
+                if isinstance(msg, AIMessage):
+                    if msg.tool_calls:
+                        calls = ", ".join([f"{tc['name']}({tc['args']})" for tc in msg.tool_calls])
+                        tool_call_msgs.append(f"[AI Tool Calls]: {calls}")
+                    if msg.content:
+                        content = safe_content_str(msg.content)
+                        if content:
+                            ai_msgs.append(content)
+                elif isinstance(msg, ToolMessage):
+                    content = safe_content_str(msg.content)
+                    if content:
+                        tool_response_msgs.append(f"[Tool] {msg.name}: {content}")
 
+            # === 修正：打印中间日志（只打一次）===
             if react_output:
-                for msg in reversed(ai_tool_msgs):
-                    if isinstance(msg, AIMessage):
-                        if msg.tool_calls:
-                            tool_calls_str = ", ".join([f"{tc['name']}({tc['args']})" for tc in msg.tool_calls])
-                            print(f"[AI Tool Calls]: {tool_calls_str}")
-
-                        elif msg.content:
-                            ai_msg += safe_content_str(msg.content)
-
-                    elif isinstance(msg, ToolMessage):
-                        print(f"[Tool] {msg.name}: {safe_content_str(msg.content)}")
-
+                for log in tool_call_msgs:
+                    print(log)
+                for log in tool_response_msgs:
+                    print(log)
                 print("-" * 60)
 
-            else:
-                for msg in reversed(ai_tool_msgs):
-                    if isinstance(msg, AIMessage) and msg.content:
-                        ai_msg += safe_content_str(msg.content)
-                        break
+            ai_msg = ""
+            if ai_msgs:
+                ai_msg = "；".join(ai_msgs) if ai_msgs else ""
 
             if ai_msg:
                 if using_speech:
                     tts_speech(ai_msg)
                 else:
                     print(f"AI: {ai_msg}")
-
             else:
                 print("[Error] 发生错误，无 AI 回复")
 
+            print("\n")
 
         except Exception as e:
+            import traceback
             print(f"❌ 错误: {e}")
+            if react_output:
+                traceback.print_exc()
