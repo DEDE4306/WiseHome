@@ -333,26 +333,30 @@ def safe_async(func: Callable[..., Coroutine[Any, Any, AgentState]]):
             }
     return wrapper
 
-# @safe_async
+
+@safe_async
 async def smart_home_agent(state: AgentState):
     """智能家居控制 agent，负责执行设备控制操作"""
     task = state.get("current_task", {})
     resp = await execute_task(state, "smart_home_control", task)
     return resp
 
-#@safe_async
+
+@safe_async
 async def query_info_agent(state: AgentState):
     """信息查询 agent，负责执行状态查询操作"""
     task = state.get("current_task", {})
     resp = await execute_task(state, "query_info", task)
     return resp
 
-#@safe_async
+
+@safe_async
 async def chat_agent(state: AgentState) -> AgentState:
     """聊天 agent，负责处理普通对话"""
     task = state.get("current_task", {})
     resp = await execute_task(state, "chat", task)
     return resp
+
 
 async def execute_task(state: AgentState, type: str, task: str):
     """执行指定类型的任务"""
@@ -366,6 +370,7 @@ async def execute_task(state: AgentState, type: str, task: str):
     )
 
     return resp
+
 
 # ============= 路由决策函数 ================
 def type_decision(state: AgentState):

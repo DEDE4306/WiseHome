@@ -1,6 +1,7 @@
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from core.speech import get_recognizer
 from core.workflow import build_workflow
+from core.tts import tts_speech
 
 
 # ========== 安全内容解析 ==========
@@ -15,16 +16,23 @@ def safe_content_str(content):
 
 
 # ========== 主循环 ===========
-async def loop(react_output: bool = False):
+async def loop(
+        react_output: bool = False,
+        using_speech: bool = False
+):
     smart_home_workflow = build_workflow(verbose=react_output)
-    print("MCP 智能家居系统已启动！示例: '打开客厅灯'，'查询天气'")
+    print("MCP 智能家居系统已启动！")
     recognizer = get_recognizer()
     
     THREAD_ID = "persistent_user_session"
 
     while True:
-        user_input = await recognizer.get_voice_input()
-        print(f"你: {user_input}")
+        if using_speech:
+            user_input = await recognizer.get_voice_input()
+            print(f"你: {user_input}")
+        else:
+            user_input = input("你: ").strip()
+
         if user_input.lower() in {"exit", "quit", "退出"}:
             print("AI: 再见！")
             break
@@ -38,6 +46,8 @@ async def loop(react_output: bool = False):
         all_messages_this_turn = []
 
         try:
+            ai_msg: str = ""
+
             async for chunk in smart_home_workflow.astream(
                     {"messages": [HumanMessage(content=user_input)]},
                     {"configurable": {"thread_id": THREAD_ID}},
@@ -63,7 +73,7 @@ async def loop(react_output: bool = False):
                             print(f"[AI Tool Calls]: {tool_calls_str}")
 
                         elif msg.content:
-                            print(f"AI: {safe_content_str(msg.content)}")
+                            ai_msg += safe_content_str(msg.content)
 
                     elif isinstance(msg, ToolMessage):
                         print(f"[Tool] {msg.name}: {safe_content_str(msg.content)}")
@@ -71,16 +81,20 @@ async def loop(react_output: bool = False):
                 print("-" * 60)
 
             else:
-                ai_msg = ""
                 for msg in reversed(ai_tool_msgs):
                     if isinstance(msg, AIMessage) and msg.content:
-                        ai_msg = safe_content_str(msg.content)
+                        ai_msg += safe_content_str(msg.content)
                         break
 
-                if ai_msg:
-                    print(f"AI: {ai_msg}")
+            if ai_msg:
+                if using_speech:
+                    tts_speech(ai_msg)
                 else:
-                    print("[Error] 发生错误，无 AI 回复")
+                    print(f"AI: {ai_msg}")
+
+            else:
+                print("[Error] 发生错误，无 AI 回复")
+
 
         except Exception as e:
             print(f"❌ 错误: {e}")
