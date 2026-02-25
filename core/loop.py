@@ -63,33 +63,25 @@ async def loop(
                 all_new_messages.extend(new_msgs)
                 history_len = len(current_msgs)
 
-            tool_call_msgs = []
-            tool_response_msgs = []
-            ai_msgs = []  # 这个是 List[str]
+            ai_msgs = []
 
             for msg in all_new_messages:
                 if isinstance(msg, AIMessage):
-                    if msg.tool_calls:
+                    if msg.tool_calls and react_output:
                         calls = ", ".join([f"{tc['name']}({tc['args']})" for tc in msg.tool_calls])
-                        tool_call_msgs.append(f"[AI Tool Calls]: {calls}")
+                        print(f"[AI Tool Calls]: {calls}")
                     if msg.content:
                         content = safe_content_str(msg.content)
                         if content:
                             ai_msgs.append(content)
                 elif isinstance(msg, ToolMessage):
                     content = safe_content_str(msg.content)
-                    if content:
-                        tool_response_msgs.append(f"[Tool] {msg.name}: {content}")
+                    if content and react_output:
+                        print(f"[Tool] {msg.name}: {content}")
 
-            # === 修正：打印中间日志（只打一次）===
             if react_output:
-                for log in tool_call_msgs:
-                    print(log)
-                for log in tool_response_msgs:
-                    print(log)
                 print("-" * 60)
 
-            ai_msg = ""
             if ai_msgs:
                 ai_msg = "；".join(ai_msgs) if ai_msgs else ""
 
