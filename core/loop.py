@@ -2,18 +2,8 @@ from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from core.speech import get_recognizer
 from core.workflow import build_workflow
 from core.tts import tts_speech
-
-
-# ========== 安全内容解析 ==========
-def safe_content_str(content):
-    if isinstance(content, str):
-        return content.strip()
-    elif isinstance(content, list):
-        texts = [str(item.get("text", item) or "") for item in content if
-                 isinstance(item, dict) and item.get("type") == "text"]
-        return " ".join(texts).strip()
-    return str(content).strip()
-
+from core.utils import safe_content_str
+from config.constants import THREAD_ID
 
 # ========== 主循环 ===========
 async def loop(
@@ -23,8 +13,6 @@ async def loop(
     smart_home_workflow = build_workflow(verbose=react_output)
     print("MCP 智能家居系统已启动！")
     recognizer = get_recognizer()
-
-    THREAD_ID = "persistent_user_session"
 
     while True:
         if using_speech:
@@ -62,6 +50,9 @@ async def loop(
                 new_msgs = current_msgs[history_len:]
                 all_new_messages.extend(new_msgs)
                 history_len = len(current_msgs)
+
+            # print("新一轮所有信息")
+            # print(all_new_messages)
 
             ai_msgs = []
 

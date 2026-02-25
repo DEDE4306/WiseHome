@@ -16,10 +16,13 @@ from pydantic import BaseModel, Field
 from typing_extensions import Annotated, TypedDict, Literal
 
 from core.model import create_model, Mongodb_checkpointer
-from core.speech import get_voice_input
+from core.utils import safe_content_str
+
 from config.prompts import type_router_template, category_router_template, system_template, task_splitter_template, complex_task_template, react_template
 
 from config.constants import REACT_OUTPUT
+
+from config.constants import THREAD_ID
 
 # ============== 全局缓存 ==============
 _tools_cache = None
@@ -198,16 +201,23 @@ async def get_more_info(state: AgentState) -> dict:
 
     agent = await get_agent_executor("query_info", tools)
 
+    temp_thread_id = f"{THREAD_ID}_temp_get_more_info_{id(state)}"
+
     resp = await agent.ainvoke(
         {"messages": [HumanMessage(task)]},
-        config={"configurable": {"thread_id": "1", "session_id": "user_1"}}
+        config={"configurable": {"thread_id": temp_thread_id, "session_id": "user_1"}}
     )
 
-    message = resp.get("messages", [])[-1].content
+    last_msg = resp.get("messages", [])[-1]
+    message = last_msg.content
     input = state["input"]
     input = "用户需求: " + input + "。额外信息: " + message
 
-    return {"input": input}
+    # remove_instruction = RemoveMessage(id=last_msg.id)
+
+    return {
+        "input": input,
+    }
 
 def generate_new_tasks(state: AgentState) -> dict:
     """拆分混合任务为多个子任务"""
@@ -366,7 +376,7 @@ async def execute_task(state: AgentState, type: str, task: str):
 
     resp = await agent.ainvoke(
         {"messages": [HumanMessage(task)]},
-        config={"configurable": {"thread_id": "1", "session_id": "user_1"}}
+        config={"configurable": {"thread_id": THREAD_ID, "session_id": "user_1"}}
     )
 
     return resp

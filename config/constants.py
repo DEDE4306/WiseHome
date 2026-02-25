@@ -16,10 +16,14 @@ MODEL_DIR = Path("D:\Project\WiseHome\model")
 VAD_MODEL = "fsmn-vad"
 ASR_MODEL = "SenseVoiceSmall"
 KWS_MODEL = "speech_charctc_kws_phone-xiaoyun_mt"
+TTS_MODEL = "Qwen3-TTS-12Hz-1.7B-CustomVoice"
 
 # 需要将模型下载到本地
 VAD_MODEL_PATH = MODEL_DIR / VAD_MODEL
 ASR_MODEL_PATH = MODEL_DIR / ASR_MODEL
 KWS_MODEL_PATH = MODEL_DIR / KWS_MODEL
+TTS_MODEL_PATH = MODEL_DIR / TTS_MODEL
+
+THREAD_ID = "persistent_user_session"
 
 KEYWORD = "你好小爱"

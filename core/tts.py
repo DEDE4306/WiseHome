@@ -3,8 +3,10 @@ import sounddevice as sd
 import numpy as np
 from qwen_tts import Qwen3TTSModel
 
+from config.constants import TTS_MODEL_PATH
+
 model = Qwen3TTSModel.from_pretrained(
-    "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+    TTS_MODEL_PATH,
     device_map="cuda:0",
     dtype=torch.bfloat16,
     attn_implementation="sdpa",
