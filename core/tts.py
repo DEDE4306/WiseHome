@@ -20,7 +20,6 @@ def tts_speech(speech: str):
         speaker="Vivian",
         instruct="你是一个智能语音助手，请使用恰当的语气",
     )
-    # print(wav)
 
     # 确保 wav 是一维数组（单声道）
     if isinstance(wav, list):
@@ -28,11 +27,7 @@ def tts_speech(speech: str):
     if wav.ndim == 2:
         wav = wav.squeeze()  # 如果是 (1, N) → (N,)
 
-    # 归一化（可选，防止爆音）
-    # wav = wav / np.max(np.abs(wav)) if np.max(np.abs(wav)) > 1.0 else wav
-
 
     # 播放音频
-    # print(f"Playing audio at {sr} Hz...")
     sd.play(wav, samplerate=sr)
     sd.wait()  # 等待播放完成（阻塞）

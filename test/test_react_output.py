@@ -36,8 +36,6 @@ def open_light(brightness: int = 100) -> str:
     return f"灯已开启，亮度为 {brightness}"
 
 
-
-
 tools = [now_search, open_light]
 
 model = create_model()

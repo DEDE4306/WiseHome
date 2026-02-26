@@ -18,7 +18,6 @@ vad_model = AutoModel(
     disable_update=True
 )
 
-
 res = asr_model.generate(
     input="output_custom_voice.wav",
     cache={},

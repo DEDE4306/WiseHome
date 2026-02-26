@@ -4,7 +4,7 @@ from config.constants import *
 
 model = AutoModel(
     model=KWS_MODEL_PATH,  # 最好可以加载模型
-    keywords="你好小爱",
+    keywords="小度小度",
     device="cpu",
     disable_update=True
 )

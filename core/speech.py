@@ -23,8 +23,8 @@ class VoiceRecognizer:
         )
         # 关键词检测模型
         self.kws_model = AutoModel(
-            model="iic/speech_charctc_kws_phone-xiaoyun_mt",
-            keywords="你好小爱",
+            model=KWS_MODEL_PATH,
+            keywords=KEYWORD,
             disable_update=True,
             output_dir="./outputs"
         )
@@ -76,8 +76,6 @@ class VoiceRecognizer:
             disable_pbar=True,
         )
         # res[0]["value"] 为检测到的关键词列表，非空则命中
-        if res:
-            print("检测", res)
         if res and res[0].get("text2", "") != "rejected" and res[0].get("text2", "") != "":
             text2 = res[0].get("text2", "")
             print("text2 内容：",text2)
@@ -107,6 +105,20 @@ class VoiceRecognizer:
 
                 chunk = self.audio_buffer[:self.chunk_size]
                 self.audio_buffer = self.audio_buffer[self.chunk_size:]
+
+                if not self.activated:
+                    if self._check_kws(chunk):
+                        self.activated = True
+                        # 重置 VAD/ASR 状态，准备接收后续指令
+                        self.cache_vad = {}
+                        self.cache_asr = {}
+                        self.audio_vad = np.array([], dtype=np.float32)
+                        self.last_vad_beg = self.last_vad_end = -1
+                        self.offset = 0
+                        self.segment_start_time = None
+                        print("已唤醒，请说话...")
+                    await asyncio.sleep(0.001)
+                    continue
 
                 self.audio_vad = np.append(self.audio_vad, chunk)
 
@@ -154,7 +166,7 @@ class VoiceRecognizer:
                             beg = int(self.last_vad_beg * self.sample_rate / 1000)
                             end = int(self.last_vad_end * self.sample_rate / 1000)
 
-                            # print(f"[vad] 语音段长度: {end - beg} samples")
+                            print(f"[vad] 语音段长度: {end - beg} samples")
 
                             # 语音唤醒
 

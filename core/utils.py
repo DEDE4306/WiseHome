@@ -1,5 +1,5 @@
-# ========== 安全内容解析 ==========
 def safe_content_str(content):
+    """安全字符串解析"""
     if isinstance(content, str):
         return content.strip()
     elif isinstance(content, list):
