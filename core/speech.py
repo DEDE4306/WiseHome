@@ -108,20 +108,6 @@ class VoiceRecognizer:
                 chunk = self.audio_buffer[:self.chunk_size]
                 self.audio_buffer = self.audio_buffer[self.chunk_size:]
 
-                if not self.activated:
-                    if self._check_kws(chunk):
-                        self.activated = True
-                        # 重置 VAD/ASR 状态，准备接收后续指令
-                        self.cache_vad = {}
-                        self.cache_asr = {}
-                        self.audio_vad = np.array([], dtype=np.float32)
-                        self.last_vad_beg = self.last_vad_end = -1
-                        self.offset = 0
-                        self.segment_start_time = None
-                        print("已唤醒，请说话...")
-                    await asyncio.sleep(0.001)
-                    continue
-
                 self.audio_vad = np.append(self.audio_vad, chunk)
 
                 res = self.vad_model.generate(
