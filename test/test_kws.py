@@ -9,6 +9,9 @@ model = AutoModel(
     disable_update=True
 )
 
+# iic/speech_charctc_kws_phone-xiaoyun_mt
+# KWS_MODEL_PATH
+
 test_wav = "D:/Project/WiseHome/test/output_custom_voice.wav"
 
 res = model.generate(
@@ -18,4 +21,5 @@ res = model.generate(
 )
 
 print(res)
+
 

@@ -23,8 +23,8 @@ class VoiceRecognizer:
         )
         # 关键词检测模型
         self.kws_model = AutoModel(
-            model=KWS_MODEL_PATH,
-            keywords=KEYWORD,
+            model="iic/speech_charctc_kws_phone-xiaoyun_mt",
+            keywords="你好小爱",
             disable_update=True,
             output_dir="./outputs"
         )
@@ -76,6 +76,8 @@ class VoiceRecognizer:
             disable_pbar=True,
         )
         # res[0]["value"] 为检测到的关键词列表，非空则命中
+        if res:
+            print("检测", res)
         if res and res[0].get("text2", "") != "rejected" and res[0].get("text2", "") != "":
             text2 = res[0].get("text2", "")
             print("text2 内容：",text2)

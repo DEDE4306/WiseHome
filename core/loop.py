@@ -73,6 +73,7 @@ async def loop(
             if react_output:
                 print("-" * 60)
 
+            ai_msg = ""
             if ai_msgs:
                 ai_msg = "；".join(ai_msgs) if ai_msgs else ""
 

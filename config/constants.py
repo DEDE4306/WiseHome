@@ -1,7 +1,7 @@
 from pathlib import Path
 
 REACT_OUTPUT = True
-USING_SPEECH_REC = False
+USING_SPEECH_REC = True
 
 SAMPLE_RATE = 16000
 CHUNK_SIZE_MS = 300
@@ -26,4 +26,4 @@ TTS_MODEL_PATH = MODEL_DIR / TTS_MODEL
 
 THREAD_ID = "persistent_user_session"
 
-KEYWORD = "你好小爱"
+KEYWORD = "你好的的"
