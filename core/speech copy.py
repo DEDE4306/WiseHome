@@ -143,14 +143,8 @@ class VoiceRecognizer:
 
                     print("vad 段：", vad_segments)
                     for segment in vad_segments:
-
-                        print(f"vad 时间：{segment[0]}--{segment[1]}")
-
                         # 检测到语音开始
                         if segment[0] > -1:
-                            # 如果之前有未处理的语音段，先重置
-                            if self.last_vad_beg > -1 and self.last_vad_end > -1:
-                                print("警告：检测到新语音开始，但前一段未处理完成，重置状态")
                             self.last_vad_beg = segment[0]
                             if self.segment_start_time is None:
                                 self.segment_start_time = time.time()

@@ -42,8 +42,8 @@ class VoiceRecognizer:
 
         self.last_vad_beg = -1
         self.last_vad_end = -1
-
         self.offset = 0
+
         self.segment_start_time = None
 
         self.audio_buffer = np.array([], dtype=np.float32)
@@ -65,13 +65,13 @@ class VoiceRecognizer:
             text = text.strip()
             if text:
                 texts.append(text)
-        # 用空格或者换行拼接
         return " ".join(texts)
 
     async def get_voice_input(self) -> str:
+        """该函数通过 vad 检测以及 asr 识别，返回用户语音识别出的文本"""
         with sd.InputStream(
             samplerate=self.sample_rate,
-            channels=1,
+            channels=self.channels,
             dtype="float32",
             blocksize=self.chunk_size,
             callback=self._audio_callback,
@@ -91,11 +91,11 @@ class VoiceRecognizer:
                     is_final=False,
                     disable_pbar=True,
                     chunk_size=self.chunk_size_ms
-
                 )
 
                 if len(res[0]["value"]):
                     vad_segments = res[0]["value"]
+
                     for segment in vad_segments:
                         if segment[0] > -1:
                             self.last_vad_beg = segment[0]
