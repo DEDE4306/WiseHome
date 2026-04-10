@@ -1,12 +1,6 @@
 from pymongo import MongoClient
 
-# MongoDB 连接配置
-URI = "mongodb://localhost:27017/"  # MongoDB 服务器地址
-DB_NAME = "wisehome_db"  # MongoDB 数据库名称
-
-# 集合名称
-CHAT_COLLECTION_NAME = "chat_logs"  # 聊天日志集合名称
-
+from config.constants import MONGODB_URI, DB_NAME
 
 class MongoConnection:
     """单例 MongoDB 客户端"""
@@ -16,7 +10,7 @@ class MongoConnection:
     def get_client(cls) -> MongoClient:
         """获取 MongoDB 客户端实例"""
         if cls._client is None:
-            cls._client = MongoClient(URI)
+            cls._client = MongoClient(MONGODB_URI)
         return cls._client
 
     @classmethod

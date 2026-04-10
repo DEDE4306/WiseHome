@@ -18,7 +18,7 @@ def tts_speech(speech: str):
         text=speech,
         language="Chinese",
         speaker="Vivian",
-        instruct="你是一个智能语音助手，请使用恰当的语气",
+        instruct="你是一个智能语音助手，请使用礼貌而温柔的语气",
     )
 
     # 确保 wav 是一维数组（单声道）
@@ -27,7 +27,6 @@ def tts_speech(speech: str):
     if wav.ndim == 2:
         wav = wav.squeeze()  # 如果是 (1, N) → (N,)
 
-
     # 播放音频
     sd.play(wav, samplerate=sr)
-    sd.wait()  # 等待播放完成（阻塞）
+    sd.wait()  # 等待播放完成

@@ -59,9 +59,9 @@
 ### 核心模块
 | 模块 | 文件 | 功能描述 |
 |------|------|----------|
-| Workflow | `core/workflow.py` | 状态流转图定义，任务路由和执行逻辑 |
-| 语音识别 | `core/speech_recognition.py` | 实时语音采集、VAD检测、ASR识别 |
 | 模型配置 | `core/model.py` | 大模型初始化和配置 |
+| Workflow | `core/workflow.py` | 状态流转图定义，任务路由和执行逻辑 |
+| 语音识别 | `voice/recognizer.py` | 实时语音采集、VAD检测、ASR识别 |
 | 工具服务器 | `wisehome_control.py` | MCP工具服务器，提供设备控制接口 |
 
 ### 配置文件
@@ -79,11 +79,27 @@ Python 3.10
 
 ### 依赖安装
 ```bash
-pip install -r requirements.txt
+uv sync
+```
+
+### 模型安装
+```bash
+# VAD 语音活动检测模型
+modelscope download --model iic/speech_fsmn_vad_zh-cn-16k-common-onnx --local_dir models/fsmn-vad
+
+# ASR 语音识别模型
+modelscope download --model iic/SenseVoiceSmall-onnx --local_dir models/SenseVoiceSmall
+
+# KWS 关键词识别模型
+modelscope download --model iic/speech_charctc_kws_phone-xiaoyun --local_dir models/speech_charctc_kws_phone-xiaoyun
+
+# TTS 语音合成模型
+modelscope download --model Qwen3-TTS-12Hz-1.7B-CustomVoice --local_dir models/Qwen3-TTS-12Hz-1.7B-CustomVoice
 ```
 
 ### 环境变量配置
 需要配置以下环境变量（在 `.env` 文件中）：
+
 ```
 OPENAI_API_KEY=your_api_key
 ```

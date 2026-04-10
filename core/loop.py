@@ -1,8 +1,9 @@
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
-from core.speech import get_recognizer
+
 from core.workflow import build_workflow
-from core.tts import tts_speech
-from core.utils import safe_content_str
+from voice.recognizer import get_recognizer
+from voice.tts import tts_speech
+from utils.text import safe_content_str
 from config.constants import THREAD_ID
 
 # ========== 主循环 ===========
@@ -51,9 +52,6 @@ async def loop(
                 all_new_messages.extend(new_msgs)
                 history_len = len(current_msgs)
 
-            # print("新一轮所有信息")
-            # print(all_new_messages)
-
             ai_msgs = []
 
             for msg in all_new_messages:
@@ -89,6 +87,6 @@ async def loop(
 
         except Exception as e:
             import traceback
-            print(f"❌ 错误: {e}")
+            print(f"[Error] 发生错误: {e}")
             if react_output:
                 traceback.print_exc()

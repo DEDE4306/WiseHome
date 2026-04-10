@@ -1,4 +1,6 @@
-from db.connection import MongoConnection, DB_NAME
+from db.connection import MongoConnection
+
+from config.constants import DB_NAME
 from models.user_model import UserInfo, RoomInfo, DeviceState
 
 class UserStore:

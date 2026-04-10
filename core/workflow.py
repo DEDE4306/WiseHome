@@ -5,20 +5,15 @@ from collections.abc import Coroutine
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated, TypedDict, Literal
 
-from langchain.agents.middleware import before_model
-from langgraph.graph.message import REMOVE_ALL_MESSAGES
-from langgraph.runtime import Runtime
 from langgraph.constants import START, END
 from langgraph.graph import add_messages, StateGraph
 from langchain.agents import create_agent
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_core.tools import BaseTool
-from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, AIMessage, RemoveMessage, ToolMessage
+from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, AIMessage
 
 from core.model import create_model, Mongodb_checkpointer
-from core.utils import safe_content_str
-
-from config.prompts import type_router_template, category_router_template, system_template, task_splitter_template, complex_task_template, react_template
+from config.prompts import type_router_template, category_router_template, system_template, task_splitter_template, complex_task_template
 from config.constants import REACT_OUTPUT
 from config.constants import THREAD_ID
 
@@ -314,20 +309,6 @@ async def get_agent_executor(category: str, tools: List[BaseTool], verbose: bool
 
         _agent_cache[category] = agent
         return agent
-
-# ============== Agent 执行节点 =============
-# @before_model
-# def trim_messages(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
-#     """Keep only the last few messages to fit context window."""
-#     messages = state["messages"]
-#
-#
-#     return {
-#         "messages": [
-#             *messages
-#         ]
-#     }
-
 
 def safe_async(func: Callable[..., Coroutine[Any, Any, AgentState]]):
     """装饰器：捕获 agent 异常并保持状态"""
