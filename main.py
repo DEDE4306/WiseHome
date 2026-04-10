@@ -1,7 +1,7 @@
 import asyncio
 from core.loop import loop
 from config.constants import REACT_OUTPUT, USING_SPEECH_REC
-from core.logger import logger
+from utils.logger import logger
 import logging
 
 logging.getLogger("funasr").setLevel(logging.ERROR)

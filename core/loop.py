@@ -33,6 +33,7 @@ async def loop(
             print("-" * 40)
 
         config = {"configurable": {"thread_id": THREAD_ID}}
+        
         checkpoint_tuple = await smart_home_workflow.checkpointer.aget_tuple(config)
         if checkpoint_tuple is None:
             history_len = 0

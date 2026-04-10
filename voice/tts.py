@@ -1,13 +1,13 @@
 import torch
 import sounddevice as sd
 import numpy as np
-from qwen_tts import Qwen3TTSModel
+from faster_qwen3_tts import FasterQwen3TTS
 
 from config.constants import TTS_MODEL_PATH
 
-model = Qwen3TTSModel.from_pretrained(
-    TTS_MODEL_PATH,
-    device_map="cuda:0",
+model = FasterQwen3TTS.from_pretrained(
+    model_name=TTS_MODEL_PATH,
+    device="cuda:0",
     dtype=torch.bfloat16,
     attn_implementation="sdpa",
 )

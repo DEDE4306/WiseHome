@@ -10,7 +10,7 @@ CHUNK_SIZE = int(CHUNK_SIZE_MS * SAMPLE_RATE / 1000)
 CHANNELS = 1
 
 # 需要修改模型存放路径，默认存放在项目根目录下的 model 文件夹
-MODEL_DIR = Path(__file__).parent.parent / "model"
+MODEL_DIR = Path(__file__).parent.parent / "models"
 
 # 本地存放的模型文件夹名
 VAD_MODEL = "fsmn-vad"
