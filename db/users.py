@@ -1,7 +1,7 @@
 from db.connection import MongoConnection
 
 from config.constants import DB_NAME
-from models.user_model import UserInfo, RoomInfo, DeviceState
+from schemas.user_model import UserInfo, RoomInfo, DeviceState
 
 class UserStore:
     """用户存储类"""

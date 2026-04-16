@@ -1,7 +1,7 @@
 from pathlib import Path
 
 REACT_OUTPUT = True
-USING_SPEECH_REC = True
+USING_SPEECH_REC = False
 
 SAMPLE_RATE = 16000
 CHUNK_SIZE_MS = 300
